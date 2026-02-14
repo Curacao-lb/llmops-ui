@@ -57,7 +57,7 @@
       // 替换最后一条消息的内容
       const lastMessage = currentMessages.value[currentMessages.value.length - 1]
       if (lastMessage) {
-        lastMessage.content = result?.data?.content || '无响应'
+        lastMessage.content = result.content || '无响应'
       }
     } catch (error) {
       Message.error('请求失败')
