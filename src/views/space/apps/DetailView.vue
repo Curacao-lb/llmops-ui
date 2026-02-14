@@ -2,15 +2,72 @@
   import { ref } from 'vue'
   import { useRoute } from 'vue-router'
   import ChatMessage from '@/components/ChatMessage.vue'
+  import { Message } from '@arco-design/web-vue'
+  import { api } from '@/api'
+
+  interface ChatMessageItem {
+    role: 'human' | 'ai'
+    content: string
+  }
 
   const route = useRoute()
-  const appId = route.params.app_id
+  const appId = route.params.app_id as string
 
-  const messages = ref([
-    { avatar: '蔡', name: '蔡小坤', message: '你好', isUser: true },
-    { avatar: 'AI', name: 'AI助手', message: '你好！有什么可以帮助你的吗？', isUser: false },
-    { avatar: 'AI', name: 'AI助手', loading: true, isUser: false },
-  ])
+  // 定义交互所需的数据
+  const query = ref('')
+  const currentMessages = ref<ChatMessageItem[]>([])
+  const isLoading = ref(false)
+
+  const clearQuery = () => {
+    currentMessages.value = []
+  }
+
+  const sendQuery = async () => {
+    if (!query.value) {
+      Message.error('请输入内容')
+      return
+    }
+
+    if (isLoading.value === true) {
+      Message.warning('请等待')
+      return
+    }
+
+    const humanQuery = query.value
+
+    currentMessages.value.push({
+      role: 'human',
+      content: humanQuery,
+    })
+
+    // 立即添加一个 loading 状态的 AI 消息
+    currentMessages.value.push({
+      role: 'ai',
+      content: '',
+    })
+
+    query.value = ''
+    isLoading.value = true
+
+    try {
+      const result = await api.apps.debug(appId, {
+        query: humanQuery,
+      })
+
+      // 替换最后一条消息的内容
+      const lastMessage = currentMessages.value[currentMessages.value.length - 1]
+      if (lastMessage) {
+        lastMessage.content = result?.data?.content || '无响应'
+      }
+    } catch (error) {
+      Message.error('请求失败')
+      console.error(error)
+      // 失败时移除 loading 消息
+      currentMessages.value.pop()
+    } finally {
+      isLoading.value = false
+    }
+  }
 </script>
 
 <template>
@@ -41,14 +98,22 @@
         </header>
         <!-- 调试对话界面 -->
         <div class="h-full min-h-0 px-6 py-7 overflow-x-hidden overflow-y-scroll scrollbar-w-none">
+          <!-- 当没任何消息的时候显示 -->
+          <div
+            v-if="!currentMessages.length"
+            class="mt-[200px] flex flex-col items-center justify-center gap-2"
+          >
+            <a-avatar :size="70" shape="square" :style="{ backgroundColor: '#00d0b6' }">
+              <icon-apps />
+            </a-avatar>
+            <div class="text-2xl font-semibold text-gray-900">聊天机器人</div>
+          </div>
           <ChatMessage
-            v-for="(msg, index) in messages"
+            v-for="(msg, index) in currentMessages"
             :key="index"
-            :avatar="msg.avatar"
-            :name="msg.name"
-            :message="msg.message"
-            :is-user="msg.isUser"
-            :loading="msg.loading"
+            :role="msg.role"
+            :message="msg.content"
+            :loading="msg.role === 'ai' && isLoading && index === currentMessages.length - 1"
           />
         </div>
         <!-- 底部输入框 -->
@@ -58,7 +123,7 @@
             <!-- 输入框组件 -->
             <div class="flex items-center gap-2 sm:gap-3 md:gap-4">
               <!-- 清除按钮 -->
-              <a-button class="shrink-0" type="text" shape="circle">
+              <a-button class="shrink-0" type="text" shape="circle" @click="clearQuery">
                 <template #icon>
                   <icon-empty size="16" :style="{ color: '#374151' }" />
                 </template>
@@ -71,6 +136,8 @@
                   type="text"
                   placeholder="输入你的问题..."
                   class="flex-1 min-w-0 outline-none text-sm sm:text-base bg-transparent placeholder-gray-400"
+                  v-model="query"
+                  @keyup.enter="sendQuery"
                 />
                 <!-- 右侧按钮组 -->
                 <div class="flex items-center gap-1 shrink-0">
@@ -81,7 +148,7 @@
                   </a-button>
                   <a-button type="text" shape="circle">
                     <template #icon>
-                      <icon-send size="16" :style="{ color: '#1d4ed8' }" />
+                      <icon-send size="16" :style="{ color: '#1d4ed8' }" @click="sendQuery" />
                     </template>
                   </a-button>
                 </div>

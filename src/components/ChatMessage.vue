@@ -1,17 +1,19 @@
 <script setup lang="ts">
+  import { ref } from 'vue'
+
   interface Props {
-    avatar: string
-    name: string
     message?: string
-    isUser?: boolean
+    role: 'human' | 'ai'
     loading?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    isUser: false,
+    role: 'ai',
     loading: false,
     message: '',
   })
+  const isUser = ref(false)
+  isUser.value = props.role === 'human'
 </script>
 
 <template>
@@ -22,12 +24,12 @@
       class="shrink-0"
       :style="{ backgroundColor: isUser ? '#3370ff' : '#00d0b6' }"
     >
-      <template v-if="isUser">{{ avatar }}</template>
+      <template v-if="isUser">蔡</template>
       <icon-apps v-else />
     </a-avatar>
     <!-- 实际消息 -->
     <div class="flex flex-col gap-2">
-      <div class="font-semibold text-gray-700">{{ name }}</div>
+      <div class="font-semibold text-gray-700">{{ isUser ? '蔡小坤' : '聊天机器人' }}</div>
       <div
         :class="[
           'px-4 py-3 rounded-2xl leading-5 max-w-max',
