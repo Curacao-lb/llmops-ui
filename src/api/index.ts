@@ -19,5 +19,7 @@ export const api = {
   apps: {
     debug: (appId: string, data: DebugRequest) =>
       request.post<DebugResponse>(`${API_BASE}/apps/${appId}/debug`, data),
+    memory_debug: (appId: string, data: DebugRequest) =>
+      request.post<DebugResponse>(`${API_BASE}/apps/${appId}/memory_debug`, data),
   },
 }

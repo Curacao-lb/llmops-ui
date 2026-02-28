@@ -50,7 +50,7 @@
     isLoading.value = true
 
     try {
-      const result = await api.apps.debug(appId, {
+      const result = await api.apps.memory_debug(appId, {
         query: humanQuery,
       })
 
