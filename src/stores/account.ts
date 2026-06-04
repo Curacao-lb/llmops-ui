@@ -13,7 +13,7 @@ export const useAccountStore = defineStore('account', () => {
   const token = ref<string>('')
 
   const isLoggedIn = computed(() => !!token.value)
-  const username = computed(() => userInfo.value?.username || '')
+  const username = computed(() => userInfo.value?.username || 'robin')
 
   function setUserInfo(info: UserInfo) {
     userInfo.value = info

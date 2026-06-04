@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/views/layouts/MainLayout.vue'
 import BlankLayout from '@/views/layouts/BlankLayout.vue'
-import HomeView from '@/views/pages/HomeView.vue'
 import LoginView from '@/views/auth/LoginView.vue'
 import SpaceView from '@/views/space/SpaceView.vue'
 
@@ -33,16 +32,40 @@ const router = createRouter({
     {
       path: '/',
       component: MainLayout,
+      // 访问根路径时重定向到首页
+      redirect: '/home',
       children: [
         {
-          path: '',
+          path: 'home',
           name: 'home',
-          component: HomeView,
+          component: () => import('@/views/pages/HomeView.vue'),
         },
         {
           path: 'space',
           name: 'space',
           component: SpaceView,
+          children: [
+            {
+              path: 'tools',
+              name: 'space-tools-list',
+              component: () => import('@/views/space/tools/ListView.vue'),
+            },
+          ],
+        },
+        {
+          path: 'store/apps',
+          name: 'store-apps-list',
+          component: () => import('@/views/store/apps/ListView.vue'),
+        },
+        {
+          path: 'store/tools',
+          name: 'store-tools-list',
+          component: () => import('@/views/store/tools/ListView.vue'),
+        },
+        {
+          path: 'open',
+          name: 'open-index',
+          component: () => import('@/views/open/indexView.vue'),
         },
       ],
     },
