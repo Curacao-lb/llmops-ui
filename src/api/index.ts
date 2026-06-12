@@ -1,6 +1,5 @@
 import request from '@/utils/request'
-
-const API_BASE = 'http://127.0.0.1:8000'
+import { apiPrefix } from '@/config'
 
 interface DebugRequest {
   query: string
@@ -18,8 +17,8 @@ export const api = {
   // Apps 相关接口
   apps: {
     debug: (appId: string, data: DebugRequest) =>
-      request.post<DebugResponse>(`${API_BASE}/apps/${appId}/debug`, data),
+      request.post<DebugResponse>(`${apiPrefix}/apps/${appId}/debug`, data),
     memory_debug: (appId: string, data: DebugRequest) =>
-      request.post<DebugResponse>(`${API_BASE}/apps/${appId}/memory_debug`, data),
+      request.post<DebugResponse>(`${apiPrefix}/apps/${appId}/memory_debug`, data),
   },
 }

@@ -6,5 +6,5 @@
 // biome-ignore lint: disable
 export {}
 declare global {
-
+  const API_BASE: typeof import('@arco-design/web-vue').PI_BASE
 }

@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import {
-  useCreateApiToolProvider,
-  useDeleteApiToolProvider,
-  useGetApiToolProvider,
-  useGetApiToolProvidersWithPage,
-  useUpdateApiToolProvider,
-  useValidateOpenAPISchema,
-} from '@/hooks/use-tool'
-import { useUploadImage } from '@/hooks/use-upload-file'
-import { type CreateApiToolProviderRequest } from '@/models/api-tool'
-import moment from 'moment/moment'
-import { typeMap } from '@/config'
-import { type FileItem, Form, type ValidatedError } from '@arco-design/web-vue'
-const openapi_schema_tooltip = `{
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { useRoute } from 'vue-router'
+  import {
+    useCreateApiToolProvider,
+    useDeleteApiToolProvider,
+    useGetApiToolProvider,
+    useGetApiToolProvidersWithPage,
+    useUpdateApiToolProvider,
+    useValidateOpenAPISchema,
+  } from '@/hooks/use-tool'
+  import { useUploadImage } from '@/hooks/use-upload-file'
+  import { type CreateApiToolProviderRequest } from '@/models/api-tool'
+  // import moment from 'moment/moment'
+  import { typeMap } from '@/config'
+  import { type FileItem, Form, type ValidatedError } from '@arco-design/web-vue'
+  const openapi_schema_tooltip = `{
 	"description": "工具描述",
 	"server": "工具调用服务器url地址",
 	"paths": {
@@ -35,156 +35,156 @@ const openapi_schema_tooltip = `{
 }
 `
 
-const route = useRoute()
-const props = defineProps({
-  createType: { type: String, required: true },
-})
-const emits = defineEmits(['update:create-type'])
-const form = ref<{
-  fileList: FileItem[]
-  icon: string
-  name: string
-  openapi_schema: string
-  headers: Record<string, any>[]
-}>({
-  fileList: [],
-  icon: '',
-  name: '',
-  openapi_schema: '',
-  headers: [],
-})
-const { image_url, handleUploadImage } = useUploadImage()
-const {
-  loading: getApiToolProviderLoading,
-  api_tool_provider,
-  loadApiToolProvider,
-} = useGetApiToolProvider()
-const {
-  loading: getApiToolProvidersLoading,
-  paginator,
-  api_tool_providers,
-  loadApiToolProviders,
-} = useGetApiToolProvidersWithPage()
-const { handleDelete: handleDeleteApiToolProvider } = useDeleteApiToolProvider()
-const { loading: updateApiToolProviderLoading, handleUpdateApiToolProvider } =
-  useUpdateApiToolProvider()
-const { loading: createApiToolProviderLoading, handleCreateApiToolProvider } =
-  useCreateApiToolProvider()
-const { handleValidateOpenAPISchema } = useValidateOpenAPISchema()
-const formRef = ref<InstanceType<typeof Form>>()
-const showIdx = ref<number>(-1)
-const loading = ref<boolean>(false)
-const showUpdateModal = ref<boolean>(false)
-const tools = computed(() => {
-  try {
-    const available_tools = []
-    const openapi_schema = JSON.parse(form.value.openapi_schema)
+  const route = useRoute()
+  const props = defineProps({
+    createType: { type: String, required: true },
+  })
+  const emits = defineEmits(['update:create-type'])
+  const form = ref<{
+    fileList: FileItem[]
+    icon: string
+    name: string
+    openapi_schema: string
+    headers: Record<string, any>[]
+  }>({
+    fileList: [],
+    icon: '',
+    name: '',
+    openapi_schema: '',
+    headers: [],
+  })
+  const { image_url, handleUploadImage } = useUploadImage()
+  const {
+    loading: getApiToolProviderLoading,
+    api_tool_provider,
+    loadApiToolProvider,
+  } = useGetApiToolProvider()
+  const {
+    loading: getApiToolProvidersLoading,
+    paginator,
+    api_tool_providers,
+    loadApiToolProviders,
+  } = useGetApiToolProvidersWithPage()
+  const { handleDelete: handleDeleteApiToolProvider } = useDeleteApiToolProvider()
+  const { loading: updateApiToolProviderLoading, handleUpdateApiToolProvider } =
+    useUpdateApiToolProvider()
+  const { loading: createApiToolProviderLoading, handleCreateApiToolProvider } =
+    useCreateApiToolProvider()
+  const { handleValidateOpenAPISchema } = useValidateOpenAPISchema()
+  const formRef = ref<InstanceType<typeof Form>>()
+  const showIdx = ref<number>(-1)
+  const loading = ref<boolean>(false)
+  const showUpdateModal = ref<boolean>(false)
+  const tools = computed(() => {
+    try {
+      const available_tools = []
+      const openapi_schema = JSON.parse(form.value.openapi_schema)
 
-    if ('paths' in openapi_schema) {
-      for (const path in openapi_schema['paths']) {
-        for (const method in openapi_schema['paths'][path]) {
-          if (['get', 'post'].includes(method)) {
-            const tool = openapi_schema['paths'][path][method]
-            if ('operationId' in tool && 'description' in tool) {
-              available_tools.push({
-                name: tool?.operationId,
-                description: tool?.description,
-                method: method,
-                path: path,
-              })
+      if ('paths' in openapi_schema) {
+        for (const path in openapi_schema['paths']) {
+          for (const method in openapi_schema['paths'][path]) {
+            if (['get', 'post'].includes(method)) {
+              const tool = openapi_schema['paths'][path][method]
+              if ('operationId' in tool && 'description' in tool) {
+                available_tools.push({
+                  name: tool?.operationId,
+                  description: tool?.description,
+                  method: method,
+                  path: path,
+                })
+              }
             }
           }
         }
       }
+      return available_tools
+    } catch (e) {
+      return []
     }
-    return available_tools
-  } catch (e) {
-    return []
+  })
+
+  const handleScroll = (event: UIEvent) => {
+    const { scrollTop, scrollHeight, clientHeight } = event.target as HTMLElement
+
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      if (getApiToolProvidersLoading.value) return
+      loadApiToolProviders(false, String(route.query?.search_word ?? ''))
+    }
   }
-})
 
-const handleScroll = (event: UIEvent) => {
-  const { scrollTop, scrollHeight, clientHeight } = event.target as HTMLElement
+  const handleUpdate = async () => {
+    const provider_id = api_tool_providers.value[showIdx.value]['id']
 
-  if (scrollTop + clientHeight >= scrollHeight - 10) {
-    if (getApiToolProvidersLoading.value) return
-    loadApiToolProviders(false, String(route.query?.search_word ?? ''))
+    await loadApiToolProvider(provider_id)
+
+    formRef.value?.resetFields()
+    form.value.fileList = [{ uid: '1', name: '插件图标', url: api_tool_provider.value.icon }]
+    form.value.icon = api_tool_provider.value.icon
+    form.value.name = api_tool_provider.value.name
+    form.value.openapi_schema = api_tool_provider.value.openapi_schema
+    form.value.headers = api_tool_provider.value.headers
+
+    showUpdateModal.value = true
   }
-}
 
-const handleUpdate = async () => {
-  const provider_id = api_tool_providers.value[showIdx.value]['id']
+  const handleDelete = () => {
+    const provider_id = api_tool_providers.value[showIdx.value]['id']
 
-  await loadApiToolProvider(provider_id)
+    handleDeleteApiToolProvider(provider_id, () => {
+      handleCancel()
+      showIdx.value = -1
 
-  formRef.value?.resetFields()
-  form.value.fileList = [{ uid: '1', name: '插件图标', url: api_tool_provider.value.icon }]
-  form.value.icon = api_tool_provider.value.icon
-  form.value.name = api_tool_provider.value.name
-  form.value.openapi_schema = api_tool_provider.value.openapi_schema
-  form.value.headers = api_tool_provider.value.headers
+      loadApiToolProviders(true, String(route.query?.search_word ?? ''))
+    })
+  }
 
-  showUpdateModal.value = true
-}
+  const handleSubmit = async ({
+    values,
+    errors,
+  }: {
+    values: Record<string, any>
+    errors: Record<string, ValidatedError> | undefined
+  }) => {
+    if (errors) return
 
-const handleDelete = () => {
-  const provider_id = api_tool_providers.value[showIdx.value]['id']
+    if (props.createType === 'tool') {
+      await handleCreateApiToolProvider(values as CreateApiToolProviderRequest)
+    } else if (showUpdateModal.value) {
+      await handleUpdateApiToolProvider(
+        api_tool_providers.value[showIdx.value]['id'],
+        values as CreateApiToolProviderRequest
+      )
+    }
 
-  handleDeleteApiToolProvider(provider_id, () => {
     handleCancel()
     showIdx.value = -1
 
-    loadApiToolProviders(true, String(route.query?.search_word ?? ''))
-  })
-}
-
-const handleSubmit = async ({
-  values,
-  errors,
-}: {
-  values: Record<string, any>
-  errors: Record<string, ValidatedError> | undefined
-}) => {
-  if (errors) return
-
-  if (props.createType === 'tool') {
-    await handleCreateApiToolProvider(values as CreateApiToolProviderRequest)
-  } else if (showUpdateModal.value) {
-    await handleUpdateApiToolProvider(
-      api_tool_providers.value[showIdx.value]['id'],
-      values as CreateApiToolProviderRequest,
-    )
+    await loadApiToolProviders(true, String(route.query?.search_word ?? ''))
   }
 
-  handleCancel()
-  showIdx.value = -1
+  const handleCancel = () => {
+    formRef.value?.resetFields()
 
-  await loadApiToolProviders(true, String(route.query?.search_word ?? ''))
-}
+    emits('update:create-type', '')
+    showUpdateModal.value = false
+  }
 
-const handleCancel = () => {
-  formRef.value?.resetFields()
+  onMounted(() => loadApiToolProviders(true, String(route.query?.search_word ?? '')))
 
-  emits('update:create-type', '')
-  showUpdateModal.value = false
-}
+  watch(
+    () => route.query?.search_word,
+    (newValue) => {
+      loadApiToolProviders(true, String(newValue))
+    }
+  )
 
-onMounted(() => loadApiToolProviders(true, String(route.query?.search_word ?? '')))
-
-watch(
-  () => route.query?.search_word,
-  (newValue) => {
-    loadApiToolProviders(true, String(newValue))
-  },
-)
-
-watch(
-  () => route.query?.create_type,
-  (newValue) => {
-    if (newValue === 'tool') emits('update:create-type', 'tool')
-  },
-  { immediate: true },
-)
+  watch(
+    () => route.query?.create_type,
+    (newValue) => {
+      if (newValue === 'tool') emits('update:create-type', 'tool')
+    },
+    { immediate: true }
+  )
 </script>
 <template>
   <a-spin

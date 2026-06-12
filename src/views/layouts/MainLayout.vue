@@ -94,8 +94,4 @@
   </a-layout>
 </template>
 
-<style scoped>
-  .logo {
-    background: rgba(255, 255, 255, 0.1);
-  }
-</style>
+<style scoped></style>
