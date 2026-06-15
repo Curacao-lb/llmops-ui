@@ -13,7 +13,7 @@ export const httpCode = {
   validateError: 'validate_error',
 }
 
-export const typeMap: unknown = {
+export const typeMap: Record<string, string> = {
   str: '字符串',
   int: '整型',
   fload: '浮点型',
