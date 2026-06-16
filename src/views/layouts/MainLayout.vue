@@ -34,7 +34,7 @@
             </div>
           </router-link>
           <!-- 创建AI应用按钮 -->
-          <router-link :to="{ name: 'space', query: { create_type: 'app' } }">
+          <router-link :to="{ name: 'space-apps-list', query: { create_type: 'app' } }">
             <a-button type="primary" long class="rounded-lg mb-4">
               <template #icon>
                 <icon-plus />

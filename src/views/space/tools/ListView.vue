@@ -11,7 +11,7 @@
   } from '@/hooks/use-tool'
   import { useUploadImage } from '@/hooks/use-upload-file'
   import { type CreateApiToolProviderRequest } from '@/models/api-tool'
-  // import moment from 'moment/moment'
+  import dayjs from 'dayjs'
   import { typeMap } from '@/config'
   import { type FileItem, Form, type ValidatedError } from '@arco-design/web-vue'
   const openapi_schema_tooltip = `{
@@ -73,6 +73,7 @@
   const { handleValidateOpenAPISchema } = useValidateOpenAPISchema()
   const formRef = ref<InstanceType<typeof Form>>()
   const showIdx = ref<number>(-1)
+  const currentProvider = computed(() => api_tool_providers.value[showIdx.value])
   const loading = ref<boolean>(false)
   const showUpdateModal = ref<boolean>(false)
   const tools = computed(() => {
@@ -113,7 +114,9 @@
   }
 
   const handleUpdate = async () => {
-    const provider_id = api_tool_providers.value[showIdx.value]['id']
+    const provider = api_tool_providers.value[showIdx.value]
+    if (!provider) return
+    const provider_id = provider.id
 
     await loadApiToolProvider(provider_id)
 
@@ -128,7 +131,9 @@
   }
 
   const handleDelete = () => {
-    const provider_id = api_tool_providers.value[showIdx.value]['id']
+    const provider = api_tool_providers.value[showIdx.value]
+    if (!provider) return
+    const provider_id = provider.id
 
     handleDeleteApiToolProvider(provider_id, () => {
       handleCancel()
@@ -150,10 +155,10 @@
     if (props.createType === 'tool') {
       await handleCreateApiToolProvider(values as CreateApiToolProviderRequest)
     } else if (showUpdateModal.value) {
-      await handleUpdateApiToolProvider(
-        api_tool_providers.value[showIdx.value]['id'],
-        values as CreateApiToolProviderRequest
-      )
+      const provider = api_tool_providers.value[showIdx.value]
+      if (provider) {
+        await handleUpdateApiToolProvider(provider.id, values as CreateApiToolProviderRequest)
+      }
     }
 
     handleCancel()
@@ -220,7 +225,7 @@
             </a-avatar>
             <div class="text-xs text-gray-400">
               · 编辑时间
-              {{ moment(provider.updated_at).format('MM-DD HH:mm') }}
+              {{ dayjs(provider.updated_at).format('MM-DD HH:mm') }}
             </div>
           </div>
         </a-card>
@@ -257,25 +262,24 @@
       @cancel="showIdx = -1"
     >
       <!-- 外部容器，用于判断showIdx是否为-1，为-1的时候就不显示 -->
-      <div v-if="showIdx != -1" class="">
+      <div v-if="currentProvider" class="">
         <!-- 顶部提供商名称 -->
         <div class="flex items-center gap-3 mb-3">
           <!-- 左侧图标 -->
-          <a-avatar :size="40" shape="square" :image-url="api_tool_providers[showIdx].icon" />
+          <a-avatar :size="40" shape="square" :image-url="currentProvider.icon" />
           <!-- 右侧工具信息 -->
           <div class="flex flex-col">
             <div class="text-base text-gray-900 font-bold">
-              {{ api_tool_providers[showIdx].name }}
+              {{ currentProvider.name }}
             </div>
             <div class="text-xs text-gray-500 line-clamp-1">
-              提供商 {{ api_tool_providers[showIdx].name }} ·
-              {{ api_tool_providers[showIdx].tools.length }} 插件
+              提供商 {{ currentProvider.name }} · {{ currentProvider.tools.length }} 插件
             </div>
           </div>
         </div>
         <!-- 提供商的描述信息 -->
         <div class="leading-[18px] text-gray-500 mb-4">
-          {{ api_tool_providers[showIdx].description }}
+          {{ currentProvider.description }}
         </div>
         <!-- 编辑按钮 -->
         <a-button
@@ -294,12 +298,10 @@
         <hr class="my-4" />
         <!-- 提供者工具 -->
         <div class="flex flex-col gap-2">
-          <div class="text-xs text-gray-500">
-            包含 {{ api_tool_providers[showIdx].tools.length }} 个工具
-          </div>
+          <div class="text-xs text-gray-500">包含 {{ currentProvider.tools.length }} 个工具</div>
           <!-- 工具列表 -->
           <a-card
-            v-for="tool in api_tool_providers[showIdx].tools"
+            v-for="tool in currentProvider.tools"
             :key="tool.name"
             class="cursor-pointer flex flex-col rounded-xl"
           >
@@ -346,7 +348,7 @@
         <div class="text-lg font-bold text-gray-700">
           {{ props.createType === 'tool' ? '新建' : '更新' }}插件
         </div>
-        <a-button type="text" class="!text-gray-700" size="small" @click="handleCancel">
+        <a-button type="text" class="text-gray-700!" size="small" @click="handleCancel">
           <template #icon>
             <icon-close />
           </template>
@@ -364,7 +366,7 @@
               :limit="1"
               list-type="picture-card"
               accept="image/png, image/jpeg"
-              class="!w-auto mx-auto"
+              class="w-auto! mx-auto"
               v-model:file-list="form.fileList"
               image-preview
               :custom-request="
@@ -481,7 +483,7 @@
                       <a-button
                         size="mini"
                         type="text"
-                        class="!text-gray-700"
+                        class="text-gray-700!"
                         @click="form.headers.splice(idx, 1)"
                       >
                         <template #icon>
@@ -494,7 +496,7 @@
               </table>
               <a-button
                 size="mini"
-                class="rounded ml-3 mb-3 !text-gray-700"
+                class="rounded ml-3 mb-3 text-gray-700!"
                 @click="form.headers.push({ key: '', value: '' })"
               >
                 <template #icon>
@@ -509,7 +511,7 @@
             <div class="">
               <a-button
                 v-if="showUpdateModal"
-                class="rounded-lg !text-red-700"
+                class="rounded-lg text-red-700!"
                 @click="handleDelete"
               >
                 删除

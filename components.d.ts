@@ -34,6 +34,7 @@ declare module 'vue' {
     ASpace: typeof import('@arco-design/web-vue')['Space']
     ASpin: typeof import('@arco-design/web-vue')['Spin']
     ATextarea: typeof import('@arco-design/web-vue')['Textarea']
+    ATooltip: typeof import('@arco-design/web-vue')['Tooltip']
     AUpload: typeof import('@arco-design/web-vue')['Upload']
     ChatMessage: typeof import('./src/components/ChatMessage.vue')['default']
     IconApp: typeof import('./src/components/icons/IconApp.vue')['default']

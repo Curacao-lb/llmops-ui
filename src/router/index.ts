@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/views/layouts/MainLayout.vue'
 import BlankLayout from '@/views/layouts/BlankLayout.vue'
 import LoginView from '@/views/auth/LoginView.vue'
-import SpaceView from '@/views/space/SpaceView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,13 +41,27 @@ const router = createRouter({
         },
         {
           path: 'space',
-          name: 'space',
-          component: SpaceView,
+          component: () => import('@/views/space/SpaceLayoutView.vue'),
           children: [
+            {
+              path: 'apps',
+              name: 'space-apps-list',
+              component: () => import('@/views/space/apps/ListView.vue'),
+            },
             {
               path: 'tools',
               name: 'space-tools-list',
               component: () => import('@/views/space/tools/ListView.vue'),
+            },
+            {
+              path: 'workflows',
+              name: 'space-workflows-list',
+              component: () => import('@/views/space/workflows/ListView.vue'),
+            },
+            {
+              path: 'datasets',
+              name: 'space-datasets-list',
+              component: () => import('@/views/space/datasets/ListView.vue'),
             },
           ],
         },
