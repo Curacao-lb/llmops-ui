@@ -1,41 +1,30 @@
+import request from '@/utils/request'
 import type { BaseResponse } from '@/models/base'
-
-// TODO: 临时假实现，待后端接口就绪后替换为真实的 request 调用
 
 export type UploadImageResponse = BaseResponse<{ image_url: string }>
 
-export type UploadFileResponse = BaseResponse<Record<string, unknown>>
+export type UploadFileResponse = BaseResponse<{
+  id: string
+  account_id: string
+  name: string
+  key: string
+  size: number
+  extension: string
+  mime_type: string
+  hash: string
+  created_at: number
+}>
 
-// 模拟接口延迟
-const mockDelay = (ms: number = 800) => new Promise((resolve) => setTimeout(resolve, ms))
-
-// 上传图片（假数据）
-export const uploadImage = async (image: File): Promise<UploadImageResponse> => {
-  await mockDelay()
-  return {
-    code: 'success',
-    message: '',
-    data: {
-      // 使用本地预览地址作为假的图片链接
-      image_url: URL.createObjectURL(image),
-    },
-  }
+// 上传图片，后端返回可访问的图片 URL
+export const uploadImage = (image: File): Promise<UploadImageResponse> => {
+  const formData = new FormData()
+  formData.append('file', image)
+  return request.post<UploadImageResponse>('/upload-files/image', formData)
 }
 
-// 上传文件（假数据）
-export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
-  await mockDelay()
-  return {
-    code: 'success',
-    message: '',
-    data: {
-      id: `mock-${Date.now()}`,
-      name: file.name,
-      size: file.size,
-      mime_type: file.type,
-      key: `mock/${file.name}`,
-      url: URL.createObjectURL(file),
-      created_at: Math.floor(Date.now() / 1000),
-    },
-  }
+// 上传文件，后端返回文件记录信息
+export const uploadFile = (file: File): Promise<UploadFileResponse> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<UploadFileResponse>('/upload-files/file', formData)
 }

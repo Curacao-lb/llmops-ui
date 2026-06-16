@@ -24,12 +24,13 @@
   })
 
   onMounted(async () => {
-    // 拦截器已拆包，这里直接拿到里层数组
-    categories.value = await getCategories()
+    const resp = await getCategories()
+    categories.value = resp.data
   })
 
   onMounted(async () => {
-    providers.value = await getBuiltinTools()
+    const resp = await getBuiltinTools()
+    providers.value = resp.data
     getBuiltinToolsLoading.value = false
   })
 </script>

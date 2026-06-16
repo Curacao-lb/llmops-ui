@@ -357,11 +357,12 @@
       <!-- 中间表单 -->
       <div class="pt-6">
         <a-form ref="formRef" :model="form" @submit="handleSubmit" layout="vertical">
-          <a-form-item
+          <!-- <a-form-item
             field="fileList"
             hide-label
             :rules="[{ required: true, message: '插件图标不能为空' }]"
-          >
+          > -->
+          <a-form-item field="fileList" hide-label>
             <a-upload
               :limit="1"
               list-type="picture-card"
