@@ -61,6 +61,18 @@
     })
   }
 
+  const getStreamContent = (data: Record<string, unknown> | undefined) => {
+    const rawData = data?.data
+    if (typeof rawData !== 'string') return ''
+
+    try {
+      const payload = JSON.parse(rawData) as { content?: unknown }
+      return typeof payload.content === 'string' ? payload.content : ''
+    } catch {
+      return ''
+    }
+  }
+
   const clearQuery = () => {
     currentMessages.value = []
   }
@@ -98,14 +110,9 @@
         const event = event_response?.event as string
         const data = event_response?.data as Record<string, unknown> | undefined
 
-        // 2.获取最后一条消息
-        const lastIndex = currentMessages.value.length - 1
-        const message = currentMessages.value[lastIndex]
-        if (!message) return
-
-        // 3.暂时只处理agent_message事件，其他事件类型等接口开发完毕后再添加
-        if (event === 'agent_message') {
-          const chunk_content = (data?.data as string) ?? ''
+        // 后端以 message 事件传递文本，data 是 { content: string } 的 JSON 字符串。
+        if (event === 'message') {
+          const chunk_content = getStreamContent(data)
           typingQueue.push(...Array.from(chunk_content))
           startTyping()
         }
