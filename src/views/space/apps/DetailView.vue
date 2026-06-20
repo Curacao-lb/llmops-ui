@@ -1,9 +1,9 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { onBeforeUnmount, ref } from 'vue'
   import { useRoute } from 'vue-router'
   import ChatMessage from '@/components/ChatMessage.vue'
   import { Message } from '@arco-design/web-vue'
-  import { api } from '@/api'
+  import { debugChat } from '@/services/app'
 
   interface ChatMessageItem {
     role: 'human' | 'ai'
@@ -17,6 +17,49 @@
   const query = ref('')
   const currentMessages = ref<ChatMessageItem[]>([])
   const isLoading = ref(false)
+  const typingQueue: string[] = []
+  let typingTimer: number | undefined
+  let resolveTyping: (() => void) | undefined
+
+  const stopTyping = () => {
+    if (typingTimer !== undefined) {
+      window.clearInterval(typingTimer)
+      typingTimer = undefined
+    }
+    typingQueue.length = 0
+    resolveTyping?.()
+    resolveTyping = undefined
+  }
+
+  const startTyping = () => {
+    if (typingTimer !== undefined) return
+
+    typingTimer = window.setInterval(() => {
+      if (!typingQueue.length) {
+        stopTyping()
+        return
+      }
+
+      const message = currentMessages.value.at(-1)
+      if (!message || message.role !== 'ai') {
+        stopTyping()
+        return
+      }
+
+      const character = typingQueue.shift()
+      if (character !== undefined) {
+        message.content += character
+      }
+    }, 20)
+  }
+
+  const waitForTyping = () => {
+    if (!typingQueue.length && typingTimer === undefined) return Promise.resolve()
+
+    return new Promise<void>((resolve) => {
+      resolveTyping = resolve
+    })
+  }
 
   const clearQuery = () => {
     currentMessages.value = []
@@ -50,24 +93,36 @@
     isLoading.value = true
 
     try {
-      const result = await api.apps.memory_debug(appId, {
-        query: humanQuery,
-      })
+      await debugChat(appId, humanQuery, (event_response) => {
+        // 1.提取流式事件响应数据以及事件名称
+        const event = event_response?.event as string
+        const data = event_response?.data as Record<string, unknown> | undefined
 
-      // 替换最后一条消息的内容
-      const lastMessage = currentMessages.value[currentMessages.value.length - 1]
-      if (lastMessage) {
-        lastMessage.content = result.content || '无响应'
-      }
+        // 2.获取最后一条消息
+        const lastIndex = currentMessages.value.length - 1
+        const message = currentMessages.value[lastIndex]
+        if (!message) return
+
+        // 3.暂时只处理agent_message事件，其他事件类型等接口开发完毕后再添加
+        if (event === 'agent_message') {
+          const chunk_content = (data?.data as string) ?? ''
+          typingQueue.push(...Array.from(chunk_content))
+          startTyping()
+        }
+      })
+      await waitForTyping()
     } catch (error) {
+      stopTyping()
       Message.error('请求失败')
       console.error(error)
-      // 失败时移除 loading 消息
+      // 失败时移除loading消息
       currentMessages.value.pop()
     } finally {
       isLoading.value = false
     }
   }
+
+  onBeforeUnmount(stopTyping)
 </script>
 
 <template>
@@ -125,7 +180,7 @@
               <!-- 清除按钮 -->
               <a-button class="shrink-0" type="text" shape="circle" @click="clearQuery">
                 <template #icon>
-                  <icon-empty size="16" :style="{ color: '#374151' }" />
+                  <icon-delete size="16" :style="{ color: '#374151' }" />
                 </template>
               </a-button>
               <!-- 输入框主体 -->
@@ -146,9 +201,9 @@
                       <icon-plus-circle size="16" :style="{ color: '#374151' }" />
                     </template>
                   </a-button>
-                  <a-button type="text" shape="circle">
+                  <a-button type="text" shape="circle" @click="sendQuery">
                     <template #icon>
-                      <icon-send size="16" :style="{ color: '#1d4ed8' }" @click="sendQuery" />
+                      <icon-send size="16" :style="{ color: '#1d4ed8' }" />
                     </template>
                   </a-button>
                 </div>

@@ -37,3 +37,22 @@ export const copyApp = (app_id: string) => {
 export const getAppsWithPage = (req: GetAppsWithPageRequest) => {
   return request.get<GetAppsWithPageResponse>(`/apps`, { params: req })
 }
+
+type DebugChatOnData = (event_response: Record<string, unknown>) => void
+
+// 应用调试对话，该接口为流式事件输出
+export function debugChat(
+  app_id: string,
+  query: string,
+  imageUrlsOrOnData: string[] | DebugChatOnData,
+  onData?: DebugChatOnData,
+) {
+  const image_urls = Array.isArray(imageUrlsOrOnData) ? imageUrlsOrOnData : undefined
+  const callback = typeof imageUrlsOrOnData === 'function' ? imageUrlsOrOnData : onData
+
+  return request.ssePost(
+    `/apps/${app_id}/conversations`,
+    { body: { query, ...(image_urls === undefined ? {} : { image_urls }) } },
+    callback!,
+  )
+}

@@ -38,9 +38,32 @@
             : 'bg-gray-100 text-black border border-gray-100',
         ]"
       >
-        <icon-loading v-if="loading" class="animate-spin" />
-        <template v-else>{{ message }}</template>
+        {{ message }}
+        <span v-if="loading" class="cursor" aria-label="正在生成" />
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+  .cursor {
+    display: inline-block;
+    width: 1px;
+    height: 14px;
+    margin-left: 2px;
+    background-color: #444;
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0;
+    }
+  }
+</style>
