@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/views/layouts/MainLayout.vue'
 import BlankLayout from '@/views/layouts/BlankLayout.vue'
 import LoginView from '@/views/auth/LoginView.vue'
+import auth from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -83,6 +84,21 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+// router.beforeEach(async (to, from) => {
+//   if (!auth.isLogin() && !['auth-authorize', 'auth-login'].includes(to.name as string)) {
+//     return { path: '/auth/login', query: { redirect: to.fullPath } }
+//   }
+// })
+
+router.beforeEach((to) => {
+  if (!auth.isLogin() && to.name !== 'login') {
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath },
+    }
+  }
 })
 
 export default router
