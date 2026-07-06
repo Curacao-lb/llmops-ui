@@ -10,7 +10,7 @@ export const getCurrentUser = () => {
 // 更新账号的密码
 export const updatePassword = (password: string) => {
   return request.post<BaseResponse<unknown>>(`/account/password`, {
-    body: { password },
+    password,
   })
 }
 

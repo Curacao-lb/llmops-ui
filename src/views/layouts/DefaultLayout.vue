@@ -2,20 +2,28 @@
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { useAccountStore } from '@/stores/account'
+  import { useCredentialStore } from '@/stores/credential'
+  import { logout } from '@/services/auth'
   import LayoutSidebar from './components/Sidebar.vue'
 
   const router = useRouter()
   const accountStore = useAccountStore()
+  const credentialStore = useCredentialStore()
 
   // 侧边栏折叠状态
-  const collapsed = ref(false)
+  // const collapsed = ref(false)
   // 账号设置模态窗显示状态
   const settingModalVisible = ref(false)
 
   // 退出登录：清理登录态后跳转到登录页
-  const handleLogout = () => {
-    accountStore.logout()
-    router.push({ name: 'login' })
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      accountStore.clear()
+      credentialStore.clear()
+      await router.push({ name: 'login' })
+    }
   }
 </script>
 
@@ -55,15 +63,15 @@
               <a-avatar
                 :size="32"
                 class="text-sm bg-blue-700"
-                :image-url="accountStore.userInfo?.avatar"
+                :image-url="accountStore.account.avatar"
               >
-                {{ accountStore.username.charAt(0).toUpperCase() }}
+                {{ accountStore.account.name.charAt(0).toUpperCase() }}
               </a-avatar>
               <!-- 个人信息 -->
               <div class="flex flex-col">
-                <div class="text-sm text-gray-900">{{ accountStore?.username }}</div>
+                <div class="text-sm text-gray-900">{{ accountStore.account.name }}</div>
                 <div class="text-xs text-gray-500">
-                  {{ accountStore.userInfo?.email ?? '123@123.com' }}
+                  {{ accountStore.account.email }}
                 </div>
               </div>
             </a-space>

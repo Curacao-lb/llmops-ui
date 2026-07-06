@@ -1,4 +1,4 @@
-import { useAccountStore } from '@/stores/account'
+import { useCredentialStore } from '@/stores/credential'
 
 interface StreamOptions {
   method?: 'GET' | 'POST'
@@ -13,7 +13,7 @@ interface StreamOptions {
  * 流式请求，用于 AI 对话等需要逐字显示的场景
  */
 export async function streamRequest(url: string, options: StreamOptions) {
-  const accountStore = useAccountStore()
+  const credentialStore = useCredentialStore()
   const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
   const fullURL = url.startsWith('http') ? url : `${baseURL}${url}`
 
@@ -22,7 +22,9 @@ export async function streamRequest(url: string, options: StreamOptions) {
       method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: accountStore.token ? `Bearer ${accountStore.token}` : '',
+        Authorization: credentialStore.credential.access_token
+          ? `Bearer ${credentialStore.credential.access_token}`
+          : '',
         ...options.headers,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -60,7 +62,7 @@ export async function streamRequest(url: string, options: StreamOptions) {
  * 适用于服务端返回 text/event-stream 格式的场景
  */
 export async function sseRequest(url: string, options: StreamOptions) {
-  const accountStore = useAccountStore()
+  const credentialStore = useCredentialStore()
   const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
   const fullURL = url.startsWith('http') ? url : `${baseURL}${url}`
 
@@ -69,7 +71,9 @@ export async function sseRequest(url: string, options: StreamOptions) {
       method: options.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: accountStore.token ? `Bearer ${accountStore.token}` : '',
+        Authorization: credentialStore.credential.access_token
+          ? `Bearer ${credentialStore.credential.access_token}`
+          : '',
         ...options.headers,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,

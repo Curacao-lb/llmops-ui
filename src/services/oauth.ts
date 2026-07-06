@@ -9,6 +9,6 @@ export const provider = (provider_name: string) => {
 // 指定第三方授权服务认证地址
 export const authorize = (provider_name: string, code: string) => {
   return request.post<AuthorizeResponse>(`/oauth/authorize/${provider_name}`, {
-    body: { code },
+    code,
   })
 }

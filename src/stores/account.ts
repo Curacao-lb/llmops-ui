@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import storage from '@/utils/storage'
-const initAccount = {
+import type { GetCurrentUserResponse } from '@/models/account'
+
+type Account = GetCurrentUserResponse['data']
+
+const initAccount: Account = {
   id: '',
   name: '',
   email: '',
@@ -13,7 +17,7 @@ const initAccount = {
 
 export const useAccountStore = defineStore('account', () => {
   const account = ref(storage.get('account', initAccount))
-  const update = (params: unknown) => {
+  const update = (params: Account) => {
     account.value = params
     storage.set('account', params)
   }

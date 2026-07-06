@@ -1,12 +1,12 @@
 export default {
   // 获取localstorage中的值
-  get: (key: string, defaultValue: unknown = ''): unknown => {
+  get: <T>(key: string, defaultValue: T): T => {
     const value = localStorage.getItem(key)
     if (value) {
       try {
-        return JSON.parse(value)
+        return JSON.parse(value) as T
       } catch {
-        return value
+        return value as T
       }
     }
     return defaultValue

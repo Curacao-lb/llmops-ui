@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { useAccountStore } from '@/stores/account'
+import { useCredentialStore } from '@/stores/credential'
 import type { ApiResponse } from '@/types/api'
 import { apiPrefix } from '@/config'
 
@@ -26,9 +27,9 @@ const baseFetchOptions: Omit<RequestInit, 'headers' | 'body'> = {
 // 请求拦截器
 axiosInstance.interceptors.request.use(
   (config) => {
-    const accountStore = useAccountStore()
-    if (accountStore.token) {
-      config.headers.Authorization = `Bearer ${accountStore.token}`
+    const credentialStore = useCredentialStore()
+    if (credentialStore.credential.access_token) {
+      config.headers.Authorization = `Bearer ${credentialStore.credential.access_token}`
     }
     return config
   },
@@ -54,7 +55,9 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const accountStore = useAccountStore()
-      accountStore.logout()
+      const credentialStore = useCredentialStore()
+      accountStore.clear()
+      credentialStore.clear()
       window.location.href = '/login'
     }
     return Promise.reject(error)
@@ -159,9 +162,9 @@ const request = {
     }
 
     // 鉴权信息与 axios 拦截器保持一致，统一从 account store 读取 token
-    const accountStore = useAccountStore()
-    if (accountStore.token) {
-      headers.set('Authorization', `Bearer ${accountStore.token}`)
+    const credentialStore = useCredentialStore()
+    if (credentialStore.credential.access_token) {
+      headers.set('Authorization', `Bearer ${credentialStore.credential.access_token}`)
     }
 
     // 组装基础的fetch请求配置
