@@ -3,16 +3,28 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { useAccountStore } from '@/stores/account'
 import { useCredentialStore } from '@/stores/credential'
 import type { ApiResponse } from '@/types/api'
-import { apiPrefix } from '@/config'
+import { apiPrefix, httpCode } from '@/config'
+
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+const fetchBaseURL = apiPrefix || apiBaseURL
+const uploadTimeout = 60 * 1000
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: apiBaseURL,
   timeout: 20000,
 })
 
 type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, any>
   body?: BodyInit | Record<string, any> | null
+}
+
+export type UploadOptions = {
+  method?: string
+  headers?: Record<string, string>
+  data?: XMLHttpRequestBodyInit | null
+  onProgress?: (event: ProgressEvent<EventTarget>) => void
+  timeout?: number
 }
 
 // 静态的 fetch 默认配置（不含 headers / body，二者按请求单独构建，避免实例被复用）
@@ -23,6 +35,15 @@ const baseFetchOptions: Omit<RequestInit, 'headers' | 'body'> = {
   redirect: 'follow',
 }
 
+const clearSessionAndRedirect = () => {
+  const accountStore = useAccountStore()
+  const credentialStore = useCredentialStore()
+  accountStore.clear()
+  credentialStore.clear()
+
+  const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  window.location.href = `/auth/login?redirect=${encodeURIComponent(redirect)}`
+}
 
 // 请求拦截器
 axiosInstance.interceptors.request.use(
@@ -44,7 +65,10 @@ axiosInstance.interceptors.response.use(
     const data = response.data as ApiResponse<unknown>
 
     // 如果 code 不是 success，抛出错误
-    if (data.code !== 'success') {
+    if (data.code !== httpCode.success) {
+      if (data.code === httpCode.unauthorized) {
+        clearSessionAndRedirect()
+      }
       return Promise.reject(new Error(data.message || '请求失败'))
     }
 
@@ -54,11 +78,7 @@ axiosInstance.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      const accountStore = useAccountStore()
-      const credentialStore = useCredentialStore()
-      accountStore.clear()
-      credentialStore.clear()
-      window.location.href = '/login'
+      clearSessionAndRedirect()
     }
     return Promise.reject(error)
   },
@@ -133,6 +153,62 @@ const handleStream = (
   })
 }
 
+export const upload = <T>(
+  url: string,
+  {
+    method = 'POST',
+    headers = {},
+    data = null,
+    onProgress,
+    timeout = uploadTimeout,
+  }: UploadOptions = {},
+): Promise<T> => {
+  const urlWithPrefix = `${fetchBaseURL}${url.startsWith('/') ? url : `/${url}`}`
+  const credentialStore = useCredentialStore()
+  const requestHeaders = { ...headers }
+
+  if (credentialStore.credential.access_token) {
+    requestHeaders.Authorization = `Bearer ${credentialStore.credential.access_token}`
+  }
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(method, urlWithPrefix)
+    xhr.withCredentials = true
+    xhr.responseType = 'json'
+    xhr.timeout = timeout
+
+    Object.entries(requestHeaders).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value)
+    })
+
+    xhr.onload = () => {
+      const response = xhr.response as ApiResponse<unknown> | null
+
+      if (xhr.status === 401 || response?.code === httpCode.unauthorized) {
+        clearSessionAndRedirect()
+        reject(new Error(response?.message || '登录状态已失效'))
+        return
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(response?.message || `文件上传失败（HTTP ${xhr.status}）`))
+        return
+      }
+      if (response?.code !== httpCode.success) {
+        reject(new Error(response?.message || '文件上传失败'))
+        return
+      }
+
+      resolve(response as T)
+    }
+    xhr.onerror = () => reject(new Error('文件上传网络异常'))
+    xhr.ontimeout = () => reject(new Error('文件上传超时'))
+    if (onProgress) xhr.upload.onprogress = onProgress
+
+    xhr.send(data)
+  })
+}
+
 // 包装请求方法以提供正确的类型
 const request = {
   get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
@@ -147,6 +223,7 @@ const request = {
   delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     return axiosInstance.delete(url, config)
   },
+  upload,
   ssePost: async (
     url: string,
     fetchOptions: FetchOptionType,
@@ -179,7 +256,7 @@ const request = {
     if (body) options.body = JSON.stringify(body)
 
     // 组装请求URL
-    const urlWithPrefix = `${apiPrefix}${url.startsWith('/') ? url : `/${url}`}`
+    const urlWithPrefix = `${fetchBaseURL}${url.startsWith('/') ? url : `/${url}`}`
 
     // 发起fetch请求并处理流式事件响应
     const response = await globalThis.fetch(urlWithPrefix, options)
