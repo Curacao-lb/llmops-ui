@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
+import { Message, type FileItem, type RequestOption } from '@arco-design/web-vue'
+import { useRouter } from 'vue-router'
 import { useAccountStore } from '@/stores/account'
+import { useCredentialStore } from '@/stores/credential'
 import {
   useGetCurrentUser,
   useUpdateAvatar,
@@ -8,22 +11,21 @@ import {
   useUpdatePassword,
 } from '@/hooks/use-account'
 import { useUploadImage } from '@/hooks/use-upload-file'
-import { useRouter } from 'vue-router'
+
 const router = useRouter()
-const props = defineProps({
-  visible: { type: Boolean, required: true },
-})
-const emits = defineEmits(['update:visible'])
+const props = defineProps<{ visible: boolean }>()
+const emit = defineEmits<{ 'update:visible': [visible: boolean] }>()
 const updateName = ref(false)
 const updatePassword = ref(false)
 const accountStore = useAccountStore()
+const credentialStore = useCredentialStore()
 const { current_user, loadCurrentUser } = useGetCurrentUser()
-const { handleUpdateAvatar } = useUpdateAvatar()
-const { handleUpdateName } = useUpdateName()
-const { handleUpdatePassword } = useUpdatePassword()
-const { image_url, handleUploadImage } = useUploadImage()
-const accountForm = ref({
-  fileList: [{ uid: '1', name: '账号头像', url: accountStore.account.avatar }],
+const { loading: avatarUpdating, handleUpdateAvatar } = useUpdateAvatar()
+const { loading: nameUpdating, handleUpdateName } = useUpdateName()
+const { loading: passwordUpdating, handleUpdatePassword } = useUpdatePassword()
+const { loading: imageUploading, image_url, handleUploadImage } = useUploadImage()
+const accountForm = reactive({
+  fileList: [] as FileItem[],
   name: accountStore.account.name,
   avatar: accountStore.account.avatar,
   password: '',
@@ -35,24 +37,69 @@ const updateAccount = async () => {
   accountStore.update(current_user.value)
 }
 
-const handleCancel = () => emits('update:visible', false)
+const resetForm = () => {
+  accountForm.fileList = accountStore.account.avatar
+    ? [{ uid: 'account-avatar', name: '账号头像', url: accountStore.account.avatar }]
+    : []
+  accountForm.name = accountStore.account.name
+  accountForm.avatar = accountStore.account.avatar
+  accountForm.password = ''
+  accountForm.email = accountStore.account.email
+}
+
+const handleCancel = () => emit('update:visible', false)
+
+const handleAvatarUpload = (option: RequestOption) => {
+  const uploadTask = async () => {
+    try {
+      if (!option.fileItem.file) throw new Error('请选择需要上传的头像')
+      await handleUploadImage(option.fileItem.file)
+      accountForm.avatar = image_url.value
+      await handleUpdateAvatar(accountForm.avatar)
+      await updateAccount()
+      option.onSuccess({ url: accountForm.avatar })
+    } catch (error) {
+      option.onError(error)
+      Message.error(error instanceof Error ? error.message : '头像更新失败')
+    }
+  }
+
+  void uploadTask()
+  return { abort: () => undefined }
+}
+
+const saveName = async () => {
+  const name = accountForm.name.trim()
+  if (!name) {
+    Message.warning('账号昵称不能为空')
+    return
+  }
+  await handleUpdateName(name)
+  await updateAccount()
+  updateName.value = false
+  Message.success('账号昵称更新成功')
+}
+
+const savePassword = async () => {
+  if (!accountForm.password) {
+    Message.warning('账号密码不能为空')
+    return
+  }
+  await handleUpdatePassword(accountForm.password)
+  accountStore.clear()
+  credentialStore.clear()
+  handleCancel()
+  await router.replace({ name: 'auth-login', query: { redirect: '/home' } })
+}
 
 watch(
   () => props.visible,
-  (newValue) => {
-    if (!newValue) {
-      updatePassword.value = false
-      updateName.value = false
-    }
-
-    accountForm.value = {
-      fileList: [{ uid: '1', name: '账号头像', url: accountStore.account.avatar }],
-      name: accountStore.account.name,
-      avatar: accountStore.account.avatar,
-      password: '',
-      email: accountStore.account.email,
-    }
+  () => {
+    updatePassword.value = false
+    updateName.value = false
+    resetForm()
   },
+  { immediate: true },
 )
 </script>
 
@@ -102,24 +149,8 @@ watch(
               list-type="picture-card"
               :limit="1"
               image-preview
-              :custom-request="
-                (option: any) => {
-                  const uploadTask = async () => {
-                    const { fileItem, onSuccess } = option
-                    await handleUploadImage(fileItem.file as File)
-                    accountForm.avatar = image_url
-                    onSuccess(image_url)
-
-                    await handleUpdateAvatar(String(accountForm.avatar))
-
-                    await updateAccount()
-                  }
-
-                  uploadTask()
-
-                  return {}
-                }
-              "
+              :disabled="imageUploading || avatarUpdating"
+              :custom-request="handleAvatarUpload"
             />
           </a-form-item>
           <a-form-item field="name">
@@ -151,17 +182,9 @@ watch(
                 </a-button>
                 <a-button
                   type="primary"
+                  :loading="nameUpdating"
                   class="rounded-lg"
-                  @click="
-                    async () => {
-                      // 发起请求更新账号名称
-                      await handleUpdateName(accountForm.name)
-
-                      // 成功更新则重新获取账号数据并隐藏输入框
-                      await updateAccount()
-                      updateName = false
-                    }
-                  "
+                  @click="saveName"
                 >
                   保存
                 </a-button>
@@ -201,16 +224,9 @@ watch(
                 </a-button>
                 <a-button
                   type="primary"
+                  :loading="passwordUpdating"
                   class="rounded-lg"
-                  @click="
-                    async () => {
-                      await handleUpdatePassword(accountForm.password)
-                      await router.push({ name: 'auth-login', query: { redirect: '/home' } })
-
-                      accountForm.password = ''
-                      updatePassword = false
-                    }
-                  "
+                  @click="savePassword"
                 >
                   保存
                 </a-button>

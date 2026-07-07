@@ -1,30 +1,31 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
-  import { useRouter } from 'vue-router'
-  import { useAccountStore } from '@/stores/account'
-  import { useCredentialStore } from '@/stores/credential'
-  import { logout } from '@/services/auth'
-  import LayoutSidebar from './components/Sidebar.vue'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAccountStore } from '@/stores/account'
+import { useCredentialStore } from '@/stores/credential'
+import { useLogout } from '@/hooks/use-auth'
+import LayoutSidebar from './components/Sidebar.vue'
+import SettingModal from './components/SettingModal.vue'
 
-  const router = useRouter()
-  const accountStore = useAccountStore()
-  const credentialStore = useCredentialStore()
+const route = useRoute()
+const router = useRouter()
+const accountStore = useAccountStore()
+const credentialStore = useCredentialStore()
+const settingModalVisible = ref(false)
+const { loading: logoutLoading, handleLogout: requestLogout } = useLogout()
 
-  // 侧边栏折叠状态
-  // const collapsed = ref(false)
-  // 账号设置模态窗显示状态
-  const settingModalVisible = ref(false)
-
-  // 退出登录：清理登录态后跳转到登录页
-  const handleLogout = async () => {
-    try {
-      await logout()
-    } finally {
-      accountStore.clear()
-      credentialStore.clear()
-      await router.push({ name: 'login' })
-    }
+const handleLogout = async () => {
+  try {
+    await requestLogout()
+  } finally {
+    accountStore.clear()
+    credentialStore.clear()
+    await router.replace({
+      name: 'auth-login',
+      query: { redirect: route.fullPath },
+    })
   }
+}
 </script>
 
 <template>
@@ -83,7 +84,7 @@
               </template>
               账号设置
             </a-doption>
-            <a-doption @click="handleLogout">
+            <a-doption :disabled="logoutLoading" @click="handleLogout">
               <template #icon>
                 <icon-poweroff />
               </template>
@@ -98,7 +99,7 @@
       <router-view />
     </a-layout-content>
     <!-- 设置模态窗 -->
-    <!-- <setting-modal v-model:visible="settingModalVisible" /> -->
+    <SettingModal v-model:visible="settingModalVisible" />
   </a-layout>
 </template>
 

@@ -17,14 +17,14 @@ export const updatePassword = (password: string) => {
 // 更新账号的名字
 export const updateName = (name: string) => {
   return request.post<BaseResponse<unknown>>(`/account/name`, {
-    body: { name },
+    name,
   })
 }
 
 // 更新账号的头像
 export const updateAvatar = (avatar: string) => {
   return request.post<BaseResponse<unknown>>(`/account/avatar`, {
-    body: { avatar },
+    avatar,
   })
 }
 

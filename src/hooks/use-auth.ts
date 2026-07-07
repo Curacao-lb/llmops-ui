@@ -1,9 +1,26 @@
 import { ref } from 'vue'
-import { passwordLogin } from '@/services/auth'
+import { logout, passwordLogin } from '@/services/auth'
 import { encryptPassword } from '@/utils/password'
 import type { LoginResponse } from '@/models/auth'
+import { Message } from '@arco-design/web-vue'
 
 type Authorization = LoginResponse['data']
+
+export const useLogout = () => {
+  const loading = ref(false)
+
+  const handleLogout = async () => {
+    try {
+      loading.value = true
+      const resp = await logout()
+      Message.success(resp.message)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, handleLogout }
+}
 
 export const usePasswordLogin = () => {
   const loading = ref(false)
