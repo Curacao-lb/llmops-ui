@@ -45,14 +45,14 @@ export function debugChat(
   app_id: string,
   query: string,
   imageUrlsOrOnData: string[] | DebugChatOnData,
-  onData?: DebugChatOnData,
+  onData?: DebugChatOnData
 ) {
   const image_urls = Array.isArray(imageUrlsOrOnData) ? imageUrlsOrOnData : undefined
   const callback = typeof imageUrlsOrOnData === 'function' ? imageUrlsOrOnData : onData
 
   return request.ssePost(
-    `/apps/${app_id}/stream_debug`,
+    `/apps/${app_id}/conversations`,
     { body: { query, ...(image_urls === undefined ? {} : { image_urls }) } },
-    callback!,
+    callback!
   )
 }

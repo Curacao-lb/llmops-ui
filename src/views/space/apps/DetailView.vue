@@ -62,15 +62,8 @@
   }
 
   const getStreamContent = (data: Record<string, unknown> | undefined) => {
-    const rawData = data?.data
-    if (typeof rawData !== 'string') return ''
-
-    try {
-      const payload = JSON.parse(rawData) as { content?: unknown }
-      return typeof payload.content === 'string' ? payload.content : ''
-    } catch {
-      return ''
-    }
+    const answer = data?.answer
+    return typeof answer === 'string' ? answer : ''
   }
 
   const clearQuery = () => {
@@ -110,8 +103,8 @@
         const event = event_response?.event as string
         const data = event_response?.data as Record<string, unknown> | undefined
 
-        // 后端以 message 事件传递文本，data 是 { content: string } 的 JSON 字符串。
-        if (event === 'message') {
+        // 后端以 agent_message 事件传递文本，data.answer 为增量内容。
+        if (event === 'agent_message') {
           const chunk_content = getStreamContent(data)
           typingQueue.push(...Array.from(chunk_content))
           startTyping()

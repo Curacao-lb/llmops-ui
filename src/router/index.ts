@@ -102,6 +102,11 @@ const router = createRouter({
           name: 'auth-authorize',
           component: () => import('@/views/auth/AuthorizeView.vue'),
         },
+        {
+          path: 'space/apps/:app_id',
+          name: 'space-apps-detail',
+          component: () => import('@/views/space/apps/DetailView.vue'),
+        },
         // {
         //   path: 'space/apps',
         //   component: () => import('@/views/space/apps/AppLayoutView.vue'),
