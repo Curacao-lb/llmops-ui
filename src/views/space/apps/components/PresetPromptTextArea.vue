@@ -1,0 +1,118 @@
+<script setup lang="ts">
+  import { ref } from 'vue'
+  import { Message } from '@arco-design/web-vue'
+  import { useOptimizePrompt } from '@/hooks/use-ai'
+  import { useUpdateDraftAppConfig } from '@/hooks/use-app'
+
+  const props = defineProps({
+    app_id: { type: String, required: true },
+    preset_prompt: { type: String, default: '', required: true },
+  })
+  const emits = defineEmits(['update:preset_prompt'])
+
+  const optimizeTriggerVisible = ref(false)
+  const origin_prompt = ref('')
+  const { handleUpdateDraftAppConfig } = useUpdateDraftAppConfig()
+  const { loading, optimize_prompt, handleOptimizePrompt } = useOptimizePrompt()
+
+  // 将优化后的prompt替换到人设文本框并保存
+  const handleReplacePresetPrompt = () => {
+    if (optimize_prompt.value.trim() === '') {
+      Message.warning('优化prompt为空，请重新生成')
+      return
+    }
+    emits('update:preset_prompt', optimize_prompt.value)
+    handleUpdateDraftAppConfig(props.app_id, { preset_prompt: optimize_prompt.value })
+    optimizeTriggerVisible.value = false
+  }
+
+  const handleSubmit = async () => {
+    if (origin_prompt.value.trim() === '') {
+      Message.warning('原始prompt不能为空')
+      return
+    }
+    await handleOptimizePrompt(origin_prompt.value)
+  }
+</script>
+
+<template>
+  <div class="flex flex-col h-full">
+    <!-- 标题栏 -->
+    <div class="flex items-center justify-between px-4 mb-4">
+      <div class="text-gray-700 font-bold">人设与回复逻辑</div>
+      <a-trigger
+        v-model:popup-visible="optimizeTriggerVisible"
+        :trigger="['click']"
+        position="bl"
+        :popup-translate="[0, 8]"
+      >
+        <a-button size="mini" class="rounded-lg px-2">
+          <template #icon>
+            <icon-sync />
+          </template>
+          优化
+        </a-button>
+        <template #content>
+          <a-card class="rounded-lg w-[422px]">
+            <div class="flex flex-col">
+              <!-- 优化结果 -->
+              <div v-if="optimize_prompt" class="mb-4 flex flex-col">
+                <div
+                  class="max-h-[321px] overflow-y-auto scrollbar-w-none mb-2 text-gray-700 whitespace-pre-line"
+                >
+                  {{ optimize_prompt }}
+                </div>
+                <a-space v-if="!loading">
+                  <a-button
+                    size="small"
+                    type="primary"
+                    class="rounded-lg"
+                    @click="handleReplacePresetPrompt"
+                  >
+                    替换
+                  </a-button>
+                  <a-button size="small" class="rounded-lg" @click="optimizeTriggerVisible = false">
+                    退出
+                  </a-button>
+                </a-space>
+              </div>
+              <!-- 输入框 -->
+              <div
+                class="h-[50px] flex items-center gap-2 px-4 flex-1 border border-gray-200 rounded-full"
+              >
+                <input
+                  v-model="origin_prompt"
+                  type="text"
+                  placeholder="你希望如何编写或优化提示词"
+                  class="flex-1 outline-0 bg-transparent"
+                  @keyup.enter="handleSubmit"
+                />
+                <a-button :loading="loading" type="text" shape="circle" @click="handleSubmit">
+                  <template #icon>
+                    <icon-send :size="16" class="!text-blue-700" />
+                  </template>
+                </a-button>
+              </div>
+            </div>
+          </a-card>
+        </template>
+      </a-trigger>
+    </div>
+    <!-- 人设文本框 -->
+    <div class="flex-1 min-h-0">
+      <a-textarea
+        class="h-full resize-none !bg-transparent !border-0 text-gray-700 px-1"
+        placeholder="请在这里输入Agent的人设与回复逻辑(预设prompt)"
+        :max-length="2000"
+        show-word-limit
+        :model-value="props.preset_prompt"
+        @update:model-value="(value: string) => emits('update:preset_prompt', value)"
+        @blur="
+          async () => {
+            await handleUpdateDraftAppConfig(props.app_id, { preset_prompt: props.preset_prompt })
+          }
+        "
+      />
+    </div>
+  </div>
+</template>

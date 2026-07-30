@@ -2,7 +2,7 @@
   import dayjs from 'dayjs'
   import { useCopyApp, useDeleteApp, useGetAppsWithPage } from '@/hooks/use-app'
   import { onMounted, ref, watch } from 'vue'
-  import { useAccountStore } from '@/stores/account'
+  // import { useAccountStore } from '@/stores/account'
   import CreateOrUpdateAppModal from './components/CreateOrUpdateAppModal.vue'
   import { useRoute } from 'vue-router'
   import IconSingle from '@/components/icons/IconSingle.vue'
@@ -15,7 +15,7 @@
   const emits = defineEmits(['update:create-type'])
   const createOrUpdateAppModalVisible = ref(false)
   const updateAppId = ref('')
-  const accountStore = useAccountStore()
+  // const accountStore = useAccountStore()
   const { handleCopyApp } = useCopyApp()
   const { loading: getAppsWithPageLoading, apps, paginator, loadApps } = useGetAppsWithPage()
   const { handleDeleteApp } = useDeleteApp()
@@ -102,7 +102,7 @@
                     </a-tooltip>
                   </a-space>
                 </router-link>
-                <div class="text-xs text-gray-500 line-clamp-1">
+                <div v-if="app.model_config" class="text-xs text-gray-500 line-clamp-1">
                   <a-space size="mini">
                     <icon-multi v-if="app.mode === 1" />
                     <icon-single v-else />
@@ -147,7 +147,9 @@
           </div>
           <!-- App的描述信息 -->
           <div class="leading-[18px] text-gray-500 h-[72px] line-clamp-4 mb-2 break-all">
-            {{ app.description.trim() === '' ? app.preset_prompt : app.description }}
+            {{
+              (app.description ?? '').trim() === '' ? (app.preset_prompt ?? '') : app.description
+            }}
           </div>
           <!-- 应用的归属者信息 -->
           <div class="flex items-center gap-1.5">
