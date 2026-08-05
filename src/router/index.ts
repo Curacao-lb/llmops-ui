@@ -70,22 +70,22 @@ const router = createRouter({
           name: 'store-tools-list',
           component: () => import('@/views/store/tools/ListView.vue'),
         },
-        // {
-        //   path: 'openapi',
-        //   component: () => import('@/views/openapi/OpenAPILayoutView.vue'),
-        //   children: [
-        //     {
-        //       path: '',
-        //       name: 'openapi-index',
-        //       component: () => import('@/views/openapi/IndexView.vue'),
-        //     },
-        //     {
-        //       path: 'api-keys',
-        //       name: 'openapi-api-keys-list',
-        //       component: () => import('@/views/openapi/api-keys/ListView.vue'),
-        //     },
-        //   ],
-        // },
+        {
+          path: 'openapi',
+          component: () => import('@/views/open/OpenAPILayoutView.vue'),
+          children: [
+            {
+              path: '',
+              name: 'openapi-index',
+              component: () => import('@/views/open/indexView.vue'),
+            },
+            {
+              path: 'api-keys',
+              name: 'openapi-api-keys-list',
+              component: () => import('@/views/open/api-keys/ListView.vue'),
+            },
+          ],
+        },
       ],
     },
     {
