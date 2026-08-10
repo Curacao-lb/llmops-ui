@@ -71,10 +71,7 @@
             <div class="flex flex-1 justify-between">
               <div class="flex flex-col">
                 <router-link
-                  :to="{
-                    name: 'space-workflows-detail',
-                    params: { workflow_id: workflow.id },
-                  }"
+                  :to="`/space/workflows/${workflow.id}`"
                   class="text-base text-gray-900 font-bold"
                 >
                   {{ workflow.name }}

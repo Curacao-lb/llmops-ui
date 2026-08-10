@@ -37,7 +37,7 @@ export const useGetWorkflowsWithPage = () => {
   const loadWorkflows = async (
     search_word: string = '',
     status: string = '',
-    init: boolean = false,
+    init: boolean = false
   ) => {
     // 判断是否是初始化，并检查分页器
     if (init) {
@@ -89,12 +89,7 @@ export const useCreateWorkflow = () => {
       const resp = await createWorkflow(req)
 
       Message.success('创建工作流成功')
-      await router.push({
-        name: 'space-workflows-detail',
-        params: {
-          workflow_id: resp.data.id,
-        },
-      })
+      await router.push(`/space/workflows/${resp.data.id}`)
     } finally {
       loading.value = false
     }
@@ -196,7 +191,7 @@ export const useUpdateDraftGraph = () => {
   const handleUpdateDraftGraph = async (
     workflow_id: string,
     req: UpdateDraftGraphRequest,
-    is_notify: boolean = true,
+    is_notify: boolean = true
   ) => {
     try {
       loading.value = true
@@ -209,7 +204,7 @@ export const useUpdateDraftGraph = () => {
 
   const convertGraphToReq = (
     nodes: Record<string, unknown>[],
-    edges: Record<string, unknown>[],
+    edges: Record<string, unknown>[]
   ): UpdateDraftGraphRequest => {
     return {
       nodes: nodes.map((node) => {
@@ -283,7 +278,7 @@ export const useDebugWorkflow = () => {
   const handleDebugWorkflow = async (
     workflow_id: string,
     inputs: Record<string, unknown>,
-    onData: (event_response: Record<string, unknown>) => void,
+    onData: (event_response: Record<string, unknown>) => void
   ) => {
     try {
       loading.value = true

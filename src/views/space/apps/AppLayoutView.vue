@@ -2,17 +2,34 @@
   import { onMounted, ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import dayjs from 'dayjs'
-  import { useCancelPublish, useGetApp, usePublish } from '@/hooks/use-app'
+  import { useCancelPublish, useDeleteApp, useGetApp, usePublish } from '@/hooks/use-app'
   import PublishHistoryDrawer from './components/PublishHistoryDrawer.vue'
+  import CreateOrUpdateAppModal from './components/CreateOrUpdateAppModal.vue'
 
   const route = useRoute()
   const router = useRouter()
   const appId = route.params.app_id as string
 
   const publishHistoryDrawerVisible = ref(false)
+  const createOrUpdateAppModalVisible = ref(false)
+  const updateAppId = ref('')
   const { loading, app, loadApp } = useGetApp()
   const { loading: publishLoading, handlePublish } = usePublish()
   const { handleCancelPublish } = useCancelPublish()
+  const { handleDeleteApp } = useDeleteApp()
+
+  // 打开编辑应用信息的模态窗
+  const openEditApp = () => {
+    updateAppId.value = appId
+    createOrUpdateAppModalVisible.value = true
+  }
+
+  // 删除当前应用，成功后返回应用列表
+  const doDeleteApp = () => {
+    handleDeleteApp(appId, async () => {
+      await router.push({ name: 'space-apps-list' })
+    })
+  }
 
   const doPublish = async () => {
     await handlePublish(appId)
@@ -43,7 +60,28 @@
           <a-avatar :size="40" shape="square" class="rounded-lg" :image-url="app.icon" />
           <div class="flex flex-col justify-between h-[40px]">
             <a-skeleton-line v-if="loading" :widths="[100]" />
-            <div v-else class="text-gray-700 font-bold pb-1">{{ app.name }}</div>
+            <a-dropdown v-else position="bl" trigger="click">
+              <div
+                class="flex items-center gap-1 text-gray-700 font-bold pb-1 cursor-pointer hover:text-blue-700 transition-colors"
+              >
+                {{ app.name }}
+                <icon-down :size="14" />
+              </div>
+              <template #content>
+                <a-doption @click="openEditApp">
+                  <template #icon>
+                    <icon-edit />
+                  </template>
+                  编辑信息
+                </a-doption>
+                <a-doption class="!text-red-700" @click="doDeleteApp">
+                  <template #icon>
+                    <icon-delete />
+                  </template>
+                  删除应用
+                </a-doption>
+              </template>
+            </a-dropdown>
             <div class="flex items-center gap-2">
               <div class="flex items-center h-[18px] text-xs text-gray-500">
                 <icon-user class="mr-1" />
@@ -125,6 +163,12 @@
       :app_id="appId"
       v-model:visible="publishHistoryDrawerVisible"
       @fallback-success="() => loadApp(appId)"
+    />
+    <!-- 编辑应用信息模态窗 -->
+    <create-or-update-app-modal
+      v-model:visible="createOrUpdateAppModalVisible"
+      v-model:app_id="updateAppId"
+      :callback="() => loadApp(appId)"
     />
   </div>
 </template>

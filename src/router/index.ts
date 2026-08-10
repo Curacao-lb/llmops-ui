@@ -45,21 +45,21 @@ const router = createRouter({
             },
           ],
         },
-        // {
-        //   path: 'space/datasets/:dataset_id/documents',
-        //   name: 'space-datasets-documents-list',
-        //   component: () => import('@/views/space/datasets/documents/ListView.vue'),
-        // },
-        // {
-        //   path: 'space/datasets/:dataset_id/documents/create',
-        //   name: 'space-datasets-documents-create',
-        //   component: () => import('@/views/space/datasets/documents/CreateView.vue'),
-        // },
-        // {
-        //   path: 'space/datasets/:dataset_id/documents/:document_id/segments',
-        //   name: 'space-datasets-documents-segments-list',
-        //   component: () => import('@/views/space/datasets/documents/segments/ListView.vue'),
-        // },
+        {
+          path: 'space/datasets/:dataset_id/documents',
+          name: 'space-datasets-documents-list',
+          component: () => import('@/views/space/datasets/documents/ListView.vue'),
+        },
+        {
+          path: 'space/datasets/:dataset_id/documents/create',
+          name: 'space-datasets-documents-create',
+          component: () => import('@/views/space/datasets/documents/CreateView.vue'),
+        },
+        {
+          path: 'space/datasets/:dataset_id/documents/:document_id/segments',
+          name: 'space-datasets-documents-segments-list',
+          component: () => import('@/views/space/datasets/documents/segments/ListView.vue'),
+        },
         {
           path: 'store/apps',
           name: 'store-apps-list',
@@ -134,11 +134,11 @@ const router = createRouter({
         //     },
         //   ],
         // },
-        // {
-        //   path: 'space/workflows/:workflow_id',
-        //   name: 'space-workflows-detail',
-        //   component: () => import('@/views/space/workflows/DetailView.vue'),
-        // },
+        {
+          path: 'space/workflows/:workflow_id',
+          name: 'space-workflows-detail',
+          component: () => import('@/views/space/workflows/DetailView.vue'),
+        },
         // {
         //   path: 'web-app/:token',
         //   name: 'web-apps-index',

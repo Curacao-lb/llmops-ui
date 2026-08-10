@@ -109,10 +109,7 @@
             <div class="flex flex-1 justify-between">
               <div class="flex flex-col">
                 <router-link
-                  :to="{
-                    name: 'space-datasets-documents-list',
-                    params: { dataset_id: dataset.id },
-                  }"
+                  :to="`/space/datasets/${dataset.id}/documents`"
                   class="text-base text-gray-900 font-bold"
                   >{{ dataset.name }}
                 </router-link>

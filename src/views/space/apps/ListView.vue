@@ -4,11 +4,17 @@
   import { onMounted, ref, watch } from 'vue'
   // import { useAccountStore } from '@/stores/account'
   import CreateOrUpdateAppModal from './components/CreateOrUpdateAppModal.vue'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import IconSingle from '@/components/icons/IconSingle.vue'
   import IconMulti from '@/components/icons/IconMulti.vue'
 
   const route = useRoute()
+  const router = useRouter()
+
+  // 点击卡片跳转到应用详情页
+  const handleClickApp = (appId: string) => {
+    router.push({ name: 'space-apps-detail', params: { app_id: appId } })
+  }
   const props = defineProps({
     createType: { type: String, default: '', required: true },
   })
@@ -71,7 +77,7 @@
     <a-row :gutter="[20, 20]" class="flex-1">
       <!-- 有数据的UI状态 -->
       <a-col v-for="app in apps" :key="app.id" :span="6">
-        <a-card hoverable class="cursor-pointer rounded-lg">
+        <a-card hoverable class="cursor-pointer rounded-lg" @click="handleClickApp(app.id)">
           <!-- 顶部应用名称 -->
           <div class="flex items-center gap-3 mb-3">
             <!-- 左侧图标 -->
@@ -111,7 +117,7 @@
                 </div>
               </div>
               <!-- 操作按钮 -->
-              <a-dropdown position="br">
+              <a-dropdown position="br" @click.stop>
                 <a-button type="text" size="small" class="rounded-lg !text-gray-700">
                   <template #icon>
                     <icon-more />

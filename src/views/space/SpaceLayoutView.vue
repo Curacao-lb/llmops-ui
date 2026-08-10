@@ -7,7 +7,7 @@
   const createType = ref<string>('')
   const searchWord = ref(route.query?.search_word || '')
 
-  const search = (value: any) => {
+  const search = (value: string) => {
     router.push({
       path: route.path,
       query: {

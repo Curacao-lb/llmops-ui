@@ -31,9 +31,22 @@
     if (errors) return
 
     if (props.app_id) {
-      await handleUpdateApp(props.app_id, form.value)
+      // 更新应用：仅提交接口需要的字段，剔除 fileList 等 UI 状态
+      await handleUpdateApp(props.app_id, {
+        name: form.value.name,
+        en_name: form.value.en_name,
+        icon: form.value.icon,
+        description: form.value.description,
+        mode: form.value.mode,
+      })
     } else {
-      await handleCreateApp(form.value)
+      // 新增应用：仅提交接口需要的字段
+      await handleCreateApp({
+        name: form.value.name,
+        en_name: form.value.en_name,
+        icon: form.value.icon,
+        description: form.value.description,
+      })
     }
 
     emits('update:visible', false)

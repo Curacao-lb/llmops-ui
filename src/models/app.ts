@@ -9,9 +9,11 @@ export type GetAppResponse = BaseResponse<{
   id: string
   debug_conversation_id: string
   name: string
+  en_name: string
   icon: string
   description: string
   status: string
+  mode: number
   draft_updated_at: number
   updated_at: number
   created_at: number
