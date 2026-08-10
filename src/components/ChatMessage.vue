@@ -1,16 +1,33 @@
 <script setup lang="ts">
   import { ref } from 'vue'
+  import AgentThought from '@/components/AgentThought.vue'
+
+  // 运行流程中的单个步骤（对应后端 agent_thoughts 里的一项）
+  interface AgentThoughtItem {
+    id?: string
+    position?: number
+    event?: string
+    thought?: string
+    observation?: string
+    tool?: string
+    tool_input?: Record<string, unknown>
+    latency?: number
+    created_at?: number
+  }
 
   interface Props {
     message?: string
     role: 'human' | 'ai'
     loading?: boolean
+    // AI 消息的运行流程步骤
+    agentThoughts?: AgentThoughtItem[]
   }
 
   const props = withDefaults(defineProps<Props>(), {
     role: 'ai',
     loading: false,
     message: '',
+    agentThoughts: () => [],
   })
   const isUser = ref(false)
   isUser.value = props.role === 'human'
@@ -41,6 +58,8 @@
         {{ message }}
         <span v-if="loading" class="cursor" aria-label="正在生成" />
       </div>
+      <!-- 运行流程（仅 AI 消息展示） -->
+      <agent-thought v-if="!isUser" :thoughts="props.agentThoughts" :running="props.loading" />
     </div>
   </div>
 </template>

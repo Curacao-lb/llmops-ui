@@ -17,9 +17,24 @@
   import PresetPromptTextArea from './components/PresetPromptTextArea.vue'
   import AgentAppAbility from './components/AgentAppAbility.vue'
 
+  // 运行流程中的单个步骤（对应后端 agent_thoughts 里的一项）
+  interface AgentThoughtItem {
+    id?: string
+    position?: number
+    event?: string
+    thought?: string
+    observation?: string
+    tool?: string
+    tool_input?: Record<string, unknown>
+    latency?: number
+    created_at?: number
+  }
+
   interface ChatMessageItem {
     role: 'human' | 'ai'
     content: string
+    // AI 消息的运行流程步骤
+    agent_thoughts?: AgentThoughtItem[]
   }
 
   // 应用基础信息由父级 AppLayoutView 通过 props 传入
@@ -110,6 +125,26 @@
     return typeof answer === 'string' ? answer : ''
   }
 
+  // 将一次流式事件收集为当前 AI 消息的运行流程步骤
+  const collectAgentThought = (event: string, data: Record<string, unknown> | undefined) => {
+    const message = currentMessages.value.at(-1)
+    if (!message || message.role !== 'ai') return
+
+    message.agent_thoughts = message.agent_thoughts ?? []
+    message.agent_thoughts.push({
+      id: typeof data?.id === 'string' ? data.id : undefined,
+      event,
+      thought: typeof data?.thought === 'string' ? data.thought : '',
+      observation: typeof data?.observation === 'string' ? data.observation : '',
+      tool: typeof data?.tool === 'string' ? data.tool : '',
+      tool_input:
+        data?.tool_input && typeof data.tool_input === 'object'
+          ? (data.tool_input as Record<string, unknown>)
+          : {},
+      latency: typeof data?.latency === 'number' ? data.latency : 0,
+    })
+  }
+
   // 清空调试会话：请求后端删除记录并清空本地消息
   const clearQuery = () => {
     handleDeleteDebugConversation(appId, () => {
@@ -170,6 +205,7 @@
     currentMessages.value.push({
       role: 'ai',
       content: '',
+      agent_thoughts: [],
     })
 
     query.value = ''
@@ -201,6 +237,9 @@
           const chunk_content = getStreamContent(data)
           typingQueue.push(...Array.from(chunk_content))
           startTyping()
+        } else if (event && event !== 'ping') {
+          // 其它事件（长期记忆召回/工具调用/知识库检索/运行结束等）收集为运行流程步骤
+          collectAgentThought(event, data)
         }
       })
       await waitForTyping()
@@ -234,7 +273,13 @@
     const restored: ChatMessageItem[] = []
     for (const item of ordered) {
       if (item.query) restored.push({ role: 'human', content: item.query })
-      if (item.answer) restored.push({ role: 'ai', content: item.answer })
+      if (item.answer) {
+        restored.push({
+          role: 'ai',
+          content: item.answer,
+          agent_thoughts: item.agent_thoughts ?? [],
+        })
+      }
     }
     currentMessages.value = restored
   })
@@ -339,6 +384,7 @@
             :key="index"
             :role="msg.role"
             :message="msg.content"
+            :agent-thoughts="msg.agent_thoughts"
             :loading="msg.role === 'ai' && isLoading && index === currentMessages.length - 1"
           />
         </div>
