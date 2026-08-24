@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// -nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
+// @ts-nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
 import { type GraphNode } from '@vue-flow/core'
 import { ref, watch } from 'vue'
 import { Message, type ValidatedError } from '@arco-design/web-vue'
@@ -215,6 +215,7 @@ watch(
 </template>
 
 <style>
+@reference 'tailwindcss';
 #start-node-info {
   .arco-textarea {
     @apply !text-xs;

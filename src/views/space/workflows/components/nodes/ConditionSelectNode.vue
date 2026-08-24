@@ -61,6 +61,7 @@ const classesLength = computed(() => {
 </template>
 
 <style scoped>
+@reference 'tailwindcss';
 .selected {
   .selected-border {
     @apply border-blue-700;

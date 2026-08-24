@@ -37,12 +37,12 @@ export const deleteWorkflow = (workflow_id: string) => {
 
 // 获取指定工作流的graph图草稿配置
 export const getDraftGraph = (workflow_id: string) => {
-  return request.get<GetDraftGraphResponse>(`/workflows/${workflow_id}/draft-graph`)
+  return request.get<GetDraftGraphResponse>(`/workflows/${workflow_id}/draft`)
 }
 
 // 更新指定工作流的graph图草稿配置
 export const updateDraftGraph = (workflow_id: string, req: UpdateDraftGraphRequest) => {
-  return request.post<BaseResponse<unknown>>(`/workflows/${workflow_id}/draft-graph`, req)
+  return request.post<BaseResponse<unknown>>(`/workflows/${workflow_id}/draft`, req)
 }
 
 // 发布指定的工作流
@@ -59,7 +59,7 @@ export const cancelPublishWorkflow = (workflow_id: string) => {
 export const debugWorkflow = (
   workflow_id: string,
   inputs: Record<string, unknown>,
-  onData: (event_response: Record<string, unknown>) => void,
+  onData: (event_response: Record<string, unknown>) => void
 ) => {
   return request.ssePost(`/workflows/${workflow_id}/debug`, { body: inputs }, onData)
 }

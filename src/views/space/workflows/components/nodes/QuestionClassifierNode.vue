@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// -nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
+// @ts-nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
 import { Handle, type NodeProps, Position } from '@vue-flow/core'
 
 const props = defineProps<NodeProps>()
@@ -51,6 +51,7 @@ const props = defineProps<NodeProps>()
 </template>
 
 <style scoped>
+@reference 'tailwindcss';
 .selected {
   .selected-border {
     @apply border-blue-700;

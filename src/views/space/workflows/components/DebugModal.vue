@@ -1,74 +1,90 @@
 <script setup lang="ts">
-// -nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
-import { useDebugWorkflow } from '@/hooks/use-workflow'
-import type { ValidatedError } from '@arco-design/web-vue'
-import { useVueFlow } from '@vue-flow/core'
-import { computed, ref, watch } from 'vue'
+  // @ts-nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
+  import { useDebugWorkflow } from '@/hooks/use-workflow'
+  import type { ValidatedError } from '@arco-design/web-vue'
+  import { useVueFlow } from '@vue-flow/core'
+  import { computed, ref, watch } from 'vue'
 
-const props = defineProps({
-  visible: { type: Boolean, required: true, default: false },
-  workflow_id: { type: String, required: true, default: '' },
-})
-const emits = defineEmits(['update:visible'])
-const { nodes } = useVueFlow()
-const form = ref<Record<string, string>>({})
-const nodeResults = ref<Record<string, any>[]>([])
-const activatedTab = ref('inputs')
-const {
-  error: debugWorkflowError,
-  loading: debugWorkflowLoading,
-  handleDebugWorkflow,
-} = useDebugWorkflow()
-
-const inputs = computed(() => {
-  const startNode = nodes.value.find((item) => item.type === 'start')
-  return startNode?.data?.inputs ?? []
-})
-
-const outputs = computed(() => {
-  const endNodeResult = nodeResults.value.find((item) => item.node_data.node_type === 'end')
-  return endNodeResult?.outputs ?? []
-})
-
-const latency = computed(() => {
-  return nodeResults.value.reduce((total, item) => total + item.latency, 0)
-})
-const toolLatency = computed(() => {
-  return nodeResults.value.reduce((total, item) => {
-    if (item.node_data.type === 'tool') {
-      total += item.latency
-    }
-    return total
-  }, 0)
-})
-
-const onSubmit = async ({ errors }: { errors: Record<string, ValidatedError> | undefined }) => {
-  // 历史运行清空
-  nodeResults.value = []
-  debugWorkflowError.value = ''
-
-  //  检查表单是否出错，如果出错则直接结束
-  if (errors) return
-
-  // 将tab选项切换到输出选项卡
-  activatedTab.value = 'output'
-
-  // 调用hooks发起请求
-  await handleDebugWorkflow(props.workflow_id, form.value, (event_response) => {
-    nodeResults.value.push(event_response?.data)
+  const props = defineProps({
+    visible: { type: Boolean, required: true, default: false },
+    workflow_id: { type: String, required: true, default: '' },
   })
-}
-watch(
-  () => props.visible,
-  (newValue) => {
-    if (newValue) {
-      debugWorkflowError.value = ''
-      nodeResults.value = []
-      activatedTab.value = 'input'
-      form.value = {}
+  const emits = defineEmits(['update:visible', 'succeeded'])
+  const { nodes } = useVueFlow()
+  const form = ref<Record<string, string>>({})
+  const nodeResults = ref<Record<string, any>[]>([])
+  const activatedTab = ref('inputs')
+  const {
+    error: debugWorkflowError,
+    loading: debugWorkflowLoading,
+    handleDebugWorkflow,
+  } = useDebugWorkflow()
+
+  const inputs = computed(() => {
+    const startNode = nodes.value.find((item) => item.type === 'start')
+    return startNode?.data?.inputs ?? []
+  })
+
+  // 是否真正运行成功：拿到了结束节点的结果且没有错误
+  const isSucceeded = computed(() => {
+    const endNodeResult = nodeResults.value.find((item) => item?.node_data?.node_type === 'end')
+    return !debugWorkflowError.value && endNodeResult !== undefined
+  })
+
+  const outputs = computed(() => {
+    const endNodeResult = nodeResults.value.find((item) => item?.node_data?.node_type === 'end')
+    return endNodeResult?.outputs ?? {}
+  })
+
+  const latency = computed(() => {
+    return nodeResults.value.reduce((total, item) => total + item.latency, 0)
+  })
+  const toolLatency = computed(() => {
+    return nodeResults.value.reduce((total, item) => {
+      if (item.node_data.type === 'tool') {
+        total += item.latency
+      }
+      return total
+    }, 0)
+  })
+
+  const onSubmit = async ({ errors }: { errors: Record<string, ValidatedError> | undefined }) => {
+    // 历史运行清空
+    nodeResults.value = []
+    debugWorkflowError.value = ''
+
+    //  检查表单是否出错，如果出错则直接结束
+    if (errors) return
+
+    // 将tab选项切换到输出选项卡
+    activatedTab.value = 'output'
+
+    // 调用hooks发起请求
+    await handleDebugWorkflow(props.workflow_id, form.value, (event_response) => {
+      // 后端推送的错误事件：直接展示真实失败原因，不再计入节点结果
+      if (event_response?.event === 'error') {
+        debugWorkflowError.value = event_response?.data?.error || '工作流运行失败'
+        return
+      }
+      nodeResults.value.push(event_response?.data)
+    })
+
+    // 若拿到结束节点结果则视为真正调试成功，通知父组件刷新工作流详情(点亮更新发布)
+    if (isSucceeded.value) {
+      emits('succeeded')
     }
-  },
-)
+  }
+  watch(
+    () => props.visible,
+    (newValue) => {
+      if (newValue) {
+        debugWorkflowError.value = ''
+        nodeResults.value = []
+        activatedTab.value = 'input'
+        form.value = {}
+      }
+    }
+  )
 </script>
 
 <template>
@@ -185,7 +201,7 @@ watch(
           </div>
           <!-- 运行成功UI -->
           <div
-            v-if="outputs"
+            v-if="isSucceeded"
             class="flex flex-col gap-2 bg-green-100 p-3 rounded-lg border border-green-500"
           >
             <!-- 状态统计 -->
@@ -196,8 +212,8 @@ watch(
             <!-- 数据统计 -->
             <div class="flex items-center gap-2 text-xs">
               <div class="flex-1 flex flex-col gap-2">
-                <div class="text-gray-500">总消耗</div>
-                <div class="text-gray-700">500 Tokens</div>
+                <div class="text-gray-500">运行节点</div>
+                <div class="text-gray-700">{{ nodeResults.length }}</div>
               </div>
               <div class="flex-1 flex flex-col gap-2">
                 <div class="text-gray-500">总用时</div>
@@ -210,10 +226,12 @@ watch(
             </div>
           </div>
           <!-- 运行结果 -->
-          <div v-if="outputs" class="bg-gray-700 rounded-lg p-3 text-white">{{ outputs }}</div>
+          <div v-if="isSucceeded" class="bg-gray-700 rounded-lg p-3 text-white">
+            {{ outputs }}
+          </div>
         </div>
         <!-- 空数据状态 -->
-        <a-empty v-if="!debugWorkflowLoading && !outputs && !debugWorkflowError" class="my-4">
+        <a-empty v-if="!debugWorkflowLoading && !isSucceeded && !debugWorkflowError" class="my-4">
           该工作流暂无运行调试结果
         </a-empty>
       </a-tab-pane>

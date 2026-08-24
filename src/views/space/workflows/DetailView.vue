@@ -1,5 +1,5 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-// -nocheck 该文件由 lingxi-console 工作流编辑器整体移植，逻辑已在源项目验证；llmops-ui 的严格 tsconfig 与其不兼容，故此处关闭类型检查
   import { markRaw, onMounted, ref } from 'vue'
   import dayjs from 'dayjs'
   import { useRoute } from 'vue-router'
@@ -360,13 +360,13 @@
   }
 
   // 工作流面板点击hooks
-  onPaneClick((mouseEvent) => {
+  onPaneClick(() => {
     isDebug.value = false
     selectedNode.value = null
   })
 
   // 工作流Edge边点击hooks
-  onEdgeClick((edgeMouseEvent) => {
+  onEdgeClick(() => {
     isDebug.value = false
     selectedNode.value = null
   })
@@ -383,7 +383,7 @@
   })
 
   // 工作流节点拖动停止hooks
-  onNodeDragStop((nodeDragEvent) => {
+  onNodeDragStop(() => {
     handleUpdateDraftGraph(
       String(route.params?.workflow_id ?? ''),
       convertGraphToReq(nodes.value, edges.value),
@@ -819,6 +819,7 @@
         <debug-modal
           :workflow_id="String(route.params?.workflow_id ?? '')"
           v-model:visible="isDebug"
+          @succeeded="() => loadWorkflow(String(route.params?.workflow_id ?? ''))"
         />
         <!-- 节点信息容器 -->
         <start-node-info
@@ -912,6 +913,7 @@
 </template>
 
 <style>
+  @reference 'tailwindcss';
   .selected {
     .vue-flow__edge-path {
       @apply !stroke-blue-700;

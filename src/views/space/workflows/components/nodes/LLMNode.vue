@@ -111,6 +111,7 @@ const props = defineProps<NodeProps>()
 </template>
 
 <style scoped>
+@reference 'tailwindcss';
 .selected {
   .selected-border {
     @apply border-blue-700;

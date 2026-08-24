@@ -4,7 +4,7 @@
   import { onMounted, ref, watch } from 'vue'
   import { useAccountStore } from '@/stores/account'
   import { useRoute } from 'vue-router'
-  // import CreateOrUpdateWorkflowModal from '@/views/space/workflows/components/CreateOrUpdateWorkflowModal.vue'
+  import CreateOrUpdateWorkflowModal from '@/views/space/workflows/components/CreateOrUpdateWorkflowModal.vue'
 
   const route = useRoute()
   const props = defineProps({
@@ -127,8 +127,7 @@
               <icon-user />
             </a-avatar>
             <div class="text-xs text-gray-400">
-              <!-- {{ accountStore.account.name }}  -->
-              · 最近编辑
+              {{ accountStore.account.name }} · 最近编辑
               {{ dayjs(workflow.updated_at * 1000).format('MM-DD HH:mm') }}
             </div>
           </div>
@@ -157,11 +156,11 @@
       </a-col>
     </a-row>
     <!-- 新建/修改模态窗 -->
-    <!-- <create-or-update-workflow-modal
+    <create-or-update-workflow-modal
       v-model:visible="createOrUpdateWorkflowModalVisible"
       v-model:workflow_id="updateWorkflowId"
       :callback="async () => await loadWorkflows(String(route.query?.search_word ?? ''), '', true)"
-    /> -->
+    />
   </a-spin>
 </template>
 
