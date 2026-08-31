@@ -325,9 +325,10 @@
     const idx = nodes.value.findIndex((item: any) => item.id === node_data.id)
 
     // 检测是否存在数据，如果存在则更新
-    if (idx !== -1) {
-      nodes.value[idx].data = {
-        ...nodes.value[idx].data,
+    const targetNode = nodes.value[idx]
+    if (idx !== -1 && targetNode) {
+      targetNode.data = {
+        ...targetNode.data,
         ...node_data,
       }
 
@@ -340,7 +341,11 @@
         // 循环遍历所有边并剔除
         for (let i = cloneEdges.length - 1; i >= 0; i--) {
           const edge = cloneEdges[i]
-          if (edge.source === node_data.id && source_handle_ids.indexOf(edge.sourceHandle) === -1) {
+          if (
+            edge &&
+            edge.source === node_data.id &&
+            source_handle_ids.indexOf(edge.sourceHandle) === -1
+          ) {
             // 分类被剔除，则删除对应的边信息
             cloneEdges.splice(i, 1)
           }

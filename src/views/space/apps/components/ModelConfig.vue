@@ -1,5 +1,9 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-  import { ref, watch } from 'vue'
+  // oxlint-disable no-unused-expressions
+  import { computed, onMounted, ref, watch } from 'vue'
+  import { apiPrefix } from '@/config'
+  import { useGetLanguageModel, useGetLanguageModels } from '@/hooks/use-language-model'
   import { useUpdateDraftAppConfig } from '@/hooks/use-app'
 
   const props = defineProps({
@@ -13,19 +17,90 @@
   })
   const emits = defineEmits(['update:model_config', 'update:dialog_round'])
 
+  const form = ref<Record<string, any>>({})
+  const {
+    loading: getLanguageModelLoading,
+    language_model,
+    loadLanguageModel,
+  } = useGetLanguageModel()
+  const { language_models, loadLanguageModels } = useGetLanguageModels()
   const { handleUpdateDraftAppConfig } = useUpdateDraftAppConfig()
 
-  const form = ref<Record<string, any>>({
-    provider: '',
-    model: '',
-    dialog_round: 3,
+  // 构建模型下拉选项，按提供商进行分组
+  const modelOptions = computed(() => {
+    return language_models.value.map((language_model) => {
+      return {
+        isGroup: true,
+        label: language_model.label,
+        options: language_model.models.map((model) => {
+          return {
+            label: model.label,
+            value: `${language_model.name}/${model.model_name}`,
+          }
+        }),
+      }
+    })
   })
+
+  // 选择模型处理器，切换模型时重新加载模型详情并重置参数
+  const changeModel = (value: any): any => {
+    // 使用/拆分出提供商+模型名字
+    const [provider_name, model_name] = value.split('/')
+
+    // 更新表单中的提供商与模型名字
+    form.value.provider = provider_name
+    form.value.model = model_name
+
+    // 发起请求获取模型详情
+    loadLanguageModel(provider_name, model_name).then(() => {
+      // 依据模型默认值重新赋值parameters
+      form.value.parameters = language_model.value.parameters.reduce(
+        (acc: Record<string, any>, parameter: Record<string, any>) => {
+          acc[parameter.name] = parameter.default ?? null
+          return acc
+        },
+        {} as Record<string, any>
+      )
+    })
+  }
+
+  // 触发器隐藏处理器，提交数据进行更新
+  const hideModelTrigger = () => {
+    // 处理表单数据，拆分出提供商+模型名字
+    const [provider_name, model_name] = String(form.value.selectValue).split('/')
+
+    // 提取表单模型配置
+    const model_config = {
+      provider: provider_name ?? '',
+      model: model_name ?? '',
+      parameters: form.value.parameters ?? {},
+      baseUrl: form.value.baseUrl ?? '',
+      apiKey: form.value.apiKey ?? '',
+    }
+
+    // 提交应用草稿配置更新
+    handleUpdateDraftAppConfig(props.app_id, {
+      model_config: model_config,
+      dialog_round: form.value.dialog_round,
+    }).then(() => {
+      emits('update:model_config', model_config)
+      emits('update:dialog_round', form.value.dialog_round)
+    })
+  }
 
   watch(
     () => props.model_config,
     (newValue) => {
-      form.value.provider = newValue?.provider ?? ''
-      form.value.model = newValue?.model ?? ''
+      // 完成表单数据初始化
+      form.value['selectValue'] = `${newValue?.provider}/${newValue?.model}`
+      form.value['provider'] = newValue?.provider
+      form.value['model'] = newValue?.model
+      form.value['parameters'] = newValue?.parameters
+      form.value['baseUrl'] = newValue?.baseUrl
+      form.value['apiKey'] = newValue?.apiKey
+
+      // 请求语言模型详情API接口
+      newValue?.provider && loadLanguageModel(String(newValue?.provider), String(newValue?.model))
     },
     { immediate: true }
   )
@@ -33,70 +108,173 @@
   watch(
     () => props.dialog_round,
     (newValue) => {
-      form.value.dialog_round = newValue ?? 3
+      form.value['dialog_round'] = newValue ?? 3
     },
     { immediate: true }
   )
 
-  // 触发器隐藏时提交草稿配置更新
-  const hideModelTrigger = () => {
-    const model_config = {
-      provider: form.value.provider,
-      model: form.value.model,
-      parameters: props.model_config?.parameters ?? {},
-      baseUrl: props.model_config?.baseUrl ?? '',
-      apiKey: props.model_config?.apiKey ?? '',
-    }
-
-    handleUpdateDraftAppConfig(props.app_id, {
-      model_config,
-      dialog_round: form.value.dialog_round,
-    }).then(() => {
-      emits('update:model_config', model_config)
-      emits('update:dialog_round', form.value.dialog_round)
-    })
-  }
+  onMounted(() => {
+    loadLanguageModels()
+  })
 </script>
 
 <template>
-  <a-trigger trigger="click" position="bl" :popup-translate="[0, 12]" @hide="hideModelTrigger">
+  <a-trigger
+    v-if="props.model_config?.provider"
+    trigger="click"
+    position="bl"
+    :popup-translate="[0, 12]"
+    @hide="hideModelTrigger"
+  >
     <div class="flex items-center gap-1 cursor-pointer hover:bg-gray-100 px-1.5 py-1 rounded-lg">
-      <a-avatar :size="16" shape="square" :style="{ backgroundColor: '#1d4ed8' }">
-        <icon-robot />
-      </a-avatar>
-      <div class="text-gray-700 text-xs">{{ form.model || '未配置模型' }}</div>
+      <a-avatar
+        :size="16"
+        shape="square"
+        :image-url="`${apiPrefix}/language-models/${form?.provider}/icon`"
+      />
+      <div class="text-gray-700 text-xs">{{ form?.model }}</div>
       <icon-down />
     </div>
     <template #content>
-      <div class="bg-white px-6 py-5 shadow rounded-lg w-[420px]">
-        <div class="text-gray-700 text-base font-semibold mb-4">模型设置</div>
-        <a-space direction="vertical" fill :size="16">
-          <div class="flex items-center gap-2">
-            <div class="text-xs text-gray-500 w-[100px] flex-shrink-0">提供商</div>
-            <a-input v-model:model-value="form.provider" placeholder="如 openai" />
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="text-xs text-gray-500 w-[100px] flex-shrink-0">模型名称</div>
-            <a-input v-model:model-value="form.model" placeholder="如 gpt-4o-mini" />
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1 text-xs text-gray-500 w-[100px] flex-shrink-0">
-              携带上下文轮数
-              <a-tooltip content="每次向Agent提问时携带的最近对话轮数，默认为3。">
+      <div class="bg-white px-6 py-5 shadow rounded-lg w-[460px]">
+        <!-- 标题 -->
+        <div class="text-gray-700 text-base font-semibold mb-3">模型设置</div>
+        <div class="w-full">
+          <a-space direction="vertical">
+            <a-space align="start">
+              <div class="flex items-center gap-2 text-gray-500 w-[80px] flex-shrink-0">
+                <div class="text-xs">Base Url</div>
+                <a-tooltip content="接口地址">
+                  <icon-question-circle />
+                </a-tooltip>
+              </div>
+              <a-input class="w-[280px]" v-model:model-value="form.baseUrl" />
+            </a-space>
+            <a-space align="start" v-if="props.model_config.provider !== 'ollama'">
+              <div class="flex items-center gap-2 text-gray-500 w-[80px] flex-shrink-0">
+                <div class="text-xs">API Key</div>
+                <a-tooltip content="接口密钥">
+                  <icon-question-circle />
+                </a-tooltip>
+              </div>
+              <a-input-password class="w-[280px]" v-model:model-value="form.apiKey" />
+            </a-space>
+          </a-space>
+        </div>
+        <!-- 模型选择 -->
+        <div class="flex flex-col gap-2 mb-2">
+          <div class="text-gray-700">模型</div>
+          <a-select
+            v-model:model-value="form.selectValue"
+            :options="modelOptions"
+            size="small"
+            class="rounded-lg mb-2"
+            placeholder="请选择Agent使用的大语言模型"
+            @change="changeModel"
+          >
+            <template #label="{ data }">
+              <div class="flex items-center gap-2">
+                <a-avatar
+                  :size="16"
+                  shape="square"
+                  :image-url="`${apiPrefix}/language-models/${data.value.split('/')[0]}/icon`"
+                />
+                <a-space :size="4">
+                  <div class="text-xs text-gray-700">{{ data.value.split('/')[0] }}</div>
+                  <div class="text-xs text-gray-500">·</div>
+                  <div class="text-xs text-gray-700">{{ data.value.split('/')[1] }}</div>
+                </a-space>
+              </div>
+            </template>
+            <template #option="{ data }">
+              <div class="flex items-center gap-2">
+                <a-avatar
+                  :size="16"
+                  shape="square"
+                  :image-url="`${apiPrefix}/language-models/${data.value.split('/')[0]}/icon`"
+                />
+                <div class="text-xs text-gray-700 py-2">{{ data.label }}</div>
+              </div>
+            </template>
+          </a-select>
+        </div>
+        <!-- 参数列表 -->
+        <div class="text-gray-700 mb-2">参数</div>
+        <a-spin :loading="getLanguageModelLoading" class="w-full">
+          <div
+            v-for="(parameter, idx) in language_model?.parameters"
+            :key="idx"
+            class="flex items-center gap-2 h-8 mb-4"
+          >
+            <!-- 字段标签 -->
+            <div class="flex items-center gap-2 text-gray-500 w-[120px] flex-shrink-0">
+              <div class="text-xs">{{ parameter?.label }}</div>
+              <a-tooltip :content="parameter?.help">
                 <icon-question-circle />
               </a-tooltip>
             </div>
-            <a-slider
-              v-model:model-value="form.dialog_round"
-              :default-value="3"
-              show-input
-              :min="0"
-              :max="10"
-              :step="1"
-            />
+            <!-- 字段输入框 -->
+            <template v-if="parameter?.options?.length > 0">
+              <a-select
+                v-model:model-value="form.parameters[parameter.name]"
+                :default-value="parameter.default"
+                placeholder="请选择参数值"
+                :options="parameter.options"
+              />
+            </template>
+            <template v-else-if="parameter.type === 'boolean'">
+              <a-select
+                v-model:model-value="form.parameters[parameter.name]"
+                :default-value="parameter.default"
+                placeholder="请选择参数值"
+                :options="[
+                  { label: '是', value: true },
+                  { label: '否', value: false },
+                ]"
+              />
+            </template>
+            <template v-else-if="['int', 'float'].includes(parameter.type)">
+              <a-slider
+                v-model:model-value="form.parameters[parameter.name]"
+                :default-value="parameter.default"
+                :min="parameter?.min"
+                :max="parameter?.max"
+                :step="parameter?.type === 'float' ? 0.1 : 1"
+                show-input
+              />
+            </template>
+            <template v-else-if="parameter.type === 'string'">
+              <a-input
+                v-model:model-value="form.parameters[parameter.name]"
+                :default-value="parameter.default"
+                placeholder="请输入参数值"
+              />
+            </template>
           </div>
-        </a-space>
+        </a-spin>
+        <!-- 携带上下文轮数 -->
+        <div class="text-gray-700 mb-2">输入及输出设置</div>
+        <div class="flex items-center gap-2 h-8">
+          <!-- 字段标签 -->
+          <div class="flex items-center gap-2 text-gray-500 w-[120px] flex-shrink-0">
+            <div class="text-xs">携带上下文轮数</div>
+            <a-tooltip content="每次向Agent提问时需要携带的最近消息对话轮数，默认为3。">
+              <icon-question-circle />
+            </a-tooltip>
+          </div>
+          <!-- 滑动输入框 -->
+          <a-slider
+            v-model:model-value="form.dialog_round"
+            :default-value="3"
+            show-input
+            :min="0"
+            :max="10"
+            :step="1"
+          />
+        </div>
       </div>
     </template>
   </a-trigger>
 </template>
+
+<style scoped></style>

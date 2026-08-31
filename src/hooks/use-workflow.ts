@@ -154,8 +154,8 @@ export const useDeleteWorkflow = () => {
 
 export const useGetDraftGraph = () => {
   const loading = ref(false)
-  const nodes = ref<Record<string, unknown>[]>([])
-  const edges = ref<Record<string, unknown>[]>([])
+  const nodes = ref<unknown[]>([])
+  const edges = ref<unknown[]>([])
 
   const loadDraftGraph = async (workflow_id: string) => {
     try {
