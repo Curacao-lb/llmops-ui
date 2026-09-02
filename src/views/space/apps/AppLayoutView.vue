@@ -104,12 +104,22 @@
       </div>
       <!-- 中间导航菜单 -->
       <div class="absolute left-1/2 -translate-x-1/2">
-        <router-link
-          :to="{ name: 'space-apps-detail', params: { app_id: appId } }"
-          class="text-base font-bold text-blue-700"
-        >
-          编排
-        </router-link>
+        <a-space :size="24">
+          <router-link
+            :to="{ name: 'space-apps-detail', params: { app_id: appId } }"
+            class="text-base font-bold"
+            :class="route.name === 'space-apps-detail' ? 'text-blue-700' : 'text-gray-500'"
+          >
+            编排
+          </router-link>
+          <router-link
+            :to="{ name: 'space-apps-analysis', params: { app_id: appId } }"
+            class="text-base font-bold"
+            :class="route.name === 'space-apps-analysis' ? 'text-blue-700' : 'text-gray-500'"
+          >
+            统计分析
+          </router-link>
+        </a-space>
       </div>
       <!-- 右侧按钮 -->
       <div>

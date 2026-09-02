@@ -30,6 +30,7 @@ declare module 'vue' {
     AForm: typeof import('@arco-design/web-vue')['Form']
     AFormItem: typeof import('@arco-design/web-vue')['FormItem']
     AgentThought: typeof import('./src/components/AgentThought.vue')['default']
+    AiMessage: typeof import('./src/components/AiMessage.vue')['default']
     AInput: typeof import('@arco-design/web-vue')['Input']
     AInputNumber: typeof import('@arco-design/web-vue')['InputNumber']
     AInputPassword: typeof import('@arco-design/web-vue')['InputPassword']
@@ -98,6 +99,7 @@ declare module 'vue' {
     IconXls: typeof import('./src/components/icons/IconXls.vue')['default']
     IconXml: typeof import('./src/components/icons/IconXml.vue')['default']
     IconYaml: typeof import('./src/components/icons/IconYaml.vue')['default']
+    OverviewIndicator: typeof import('./src/components/OverviewIndicator.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

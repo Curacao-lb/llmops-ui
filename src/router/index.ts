@@ -111,6 +111,11 @@ const router = createRouter({
               name: 'space-apps-detail',
               component: () => import('@/views/space/apps/DetailView.vue'),
             },
+            {
+              path: ':app_id/analysis',
+              name: 'space-apps-analysis',
+              component: () => import('@/views/space/apps/AnalysisView.vue'),
+            },
           ],
         },
         // {
