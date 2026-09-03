@@ -3,6 +3,9 @@
   import OpeningAbilityItem from './abilities/OpeningAbilityItem.vue'
   import LongTermMemoryAbilityItem from './abilities/LongTermMemoryAbilityItem.vue'
   import SuggestedAfterAnswerAbilityItem from './abilities/SuggestedAfterAnswerAbilityItem.vue'
+  import WorkflowsAbilityItem from './abilities/WorkflowsAbilityItem.vue'
+
+  type Workflow = { id: string; name: string; icon: string; description: string }
 
   const props = defineProps({
     app_id: { type: String, default: '', required: true },
@@ -29,6 +32,7 @@
   const suggested_after_answer = buildField<{ enable: boolean }>('suggested_after_answer', {
     enable: true,
   })
+  const workflows = buildField<Workflow[]>('workflows', [])
 </script>
 
 <template>
@@ -36,6 +40,8 @@
     <div class="px-4 mb-4 text-gray-700 font-bold">应用能力</div>
     <div class="flex-1 min-h-0 overflow-y-auto px-4 scrollbar-w-none">
       <a-collapse :default-active-key="['opening']" :bordered="false" expand-icon-position="right">
+        <!-- 工作流组件 -->
+        <workflows-ability-item :app_id="props.app_id" v-model:workflows="workflows" />
         <opening-ability-item
           :app_id="props.app_id"
           v-model:opening_statement="opening_statement"
