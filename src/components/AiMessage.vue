@@ -1,6 +1,10 @@
 <script setup lang="ts">
-  import { type PropType } from 'vue'
+  import { computed, type PropType } from 'vue'
   import { Message } from '@arco-design/web-vue'
+  import MarkdownIt from 'markdown-it'
+  import hljs from 'highlight.js'
+  import 'highlight.js/styles/github-dark.css'
+  import 'github-markdown-css'
   import AgentThought from '@/components/AgentThought.vue'
 
   // 运行流程中的单个步骤（对应后端 agent_thoughts 里的一项）
@@ -45,6 +49,40 @@
 
   const emits = defineEmits(['selectSuggestedQuestion'])
 
+  // 将 AI 返回的 Markdown 渲染为 HTML。关闭原始 HTML，避免消息内容注入页面元素。
+  const markdown = new MarkdownIt({
+    html: false,
+    breaks: true,
+    linkify: true,
+    typographer: true,
+  })
+
+  markdown.set({
+    highlight: (code: string, language: string): string => {
+      // 指定语言时优先使用对应的语法高亮。
+      if (language && hljs.getLanguage(language)) {
+        try {
+          const highlighted = hljs.highlight(code, {
+            language,
+            ignoreIllegals: true,
+          }).value
+          return `<pre class="hljs"><code>${highlighted}</code></pre>`
+        } catch {
+          // 高亮失败时继续尝试自动检测。
+        }
+      }
+
+      // 未指定语言或语言不可用时自动检测，失败则回退为安全的纯文本。
+      try {
+        return `<pre class="hljs"><code>${hljs.highlightAuto(code).value}</code></pre>`
+      } catch {
+        return `<pre class="hljs"><code>${markdown.utils.escapeHtml(code)}</code></pre>`
+      }
+    },
+  })
+
+  const renderedAnswer = computed(() => markdown.render(props.answer))
+
   // 复制回答内容到剪贴板
   const copyText = async () => {
     try {
@@ -88,8 +126,9 @@
       </div>
       <div
         v-else
-        :class="`${props.message_class} markdown-body border border-gray-200 text-gray-700 px-4 py-3 rounded-2xl break-words whitespace-pre-wrap leading-6`"
-      >{{ props.answer }}</div>
+        :class="`${props.message_class} markdown-body max-w-full border border-gray-200 text-gray-700 px-4 py-3 rounded-2xl break-words leading-6`"
+        v-html="renderedAnswer"
+      ></div>
       <!-- 消息操作与数据 -->
       <div v-if="props.answer" class="w-full flex items-center justify-between">
         <a-space class="text-xs">
@@ -175,5 +214,22 @@
     100% {
       background-color: rgba(156, 163, 175, 0.2);
     }
+  }
+
+  /* GitHub Markdown 样式作为内容排版基础，气泡颜色和尺寸沿用当前页面设计。 */
+  .markdown-body {
+    background-color: transparent;
+    color: inherit;
+    font-size: inherit;
+    min-width: 0;
+  }
+
+  .markdown-body :deep(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .markdown-body :deep(pre code) {
+    white-space: pre;
   }
 </style>
