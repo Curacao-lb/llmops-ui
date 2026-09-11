@@ -119,6 +119,13 @@
           >
             统计分析
           </router-link>
+          <router-link
+            :to="{ name: 'space-apps-published', params: { app_id: appId } }"
+            class="text-base font-bold"
+            :class="route.name === 'space-apps-published' ? 'text-blue-700' : 'text-gray-500'"
+          >
+            发布配置
+          </router-link>
         </a-space>
       </div>
       <!-- 右侧按钮 -->

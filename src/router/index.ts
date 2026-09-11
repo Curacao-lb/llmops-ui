@@ -116,6 +116,11 @@ const router = createRouter({
               name: 'space-apps-analysis',
               component: () => import('@/views/space/apps/AnalysisView.vue'),
             },
+            {
+              path: ':app_id/published',
+              name: 'space-apps-published',
+              component: () => import('@/views/space/apps/PublishedView.vue'),
+            },
           ],
         },
         // {
@@ -144,11 +149,11 @@ const router = createRouter({
           name: 'space-workflows-detail',
           component: () => import('@/views/space/workflows/DetailView.vue'),
         },
-        // {
-        //   path: 'web-app/:token',
-        //   name: 'web-apps-index',
-        //   component: () => import('@/views/web-apps/IndexView.vue'),
-        // },
+        {
+          path: 'web-app/:token',
+          name: 'web-apps-index',
+          component: () => import('@/views/web-apps/IndexView.vue'),
+        },
         // {
         //   path: '/errors/404',
         //   name: 'errors-not-found',

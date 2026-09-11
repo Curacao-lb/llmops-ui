@@ -14,12 +14,14 @@ import {
   getDebugConversationMessagesWithPage,
   getDebugConversationSummary,
   getDraftAppConfig,
+  getPublishedConfig,
   getPublishHistoriesWithPage,
   publish,
   stopDebugChat,
   updateDebugConversationSummary,
   updateApp,
   updateDraftAppConfig,
+  regenerateWebAppToken,
 } from '@/services/app'
 import type {
   CreateAppRequest,
@@ -457,4 +459,39 @@ export const useUpdateDebugConversationSummary = () => {
   }
 
   return { loading, handleUpdateDebugConversationSummary }
+}
+
+export const useGetPublishedConfig = () => {
+  const loading = ref(false)
+  const published_config = ref<Record<string, any>>({})
+
+  const loadPublishedConfig = async (app_id: string) => {
+    try {
+      loading.value = true
+      const resp = await getPublishedConfig(app_id)
+      published_config.value = resp.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, published_config, loadPublishedConfig }
+}
+
+export const useRegenerateWebAppToken = () => {
+  const loading = ref(false)
+  const token = ref('')
+
+  const handleRegenerateWebAppToken = async (app_id: string) => {
+    try {
+      loading.value = true
+      const resp = await regenerateWebAppToken(app_id)
+      token.value = resp.data.token
+      Message.success('重新生成 WebApp 访问链接成功')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, token, handleRegenerateWebAppToken }
 }

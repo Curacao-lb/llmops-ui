@@ -7,7 +7,9 @@ import type {
   GetDebugConversationMessagesWithPageRequest,
   GetDebugConversationMessagesWithPageResponse,
   GetDraftAppConfigResponse,
+  GetPublishedConfigResponse,
   GetPublishHistoriesWithPageResponse,
+  RegenerateWebAppTokenResponse,
   UpdateAppRequest,
   UpdateDraftAppConfigRequest,
 } from '@/models/app'
@@ -129,4 +131,16 @@ export const getDebugConversationSummary = (app_id: string) => {
 // 更新应用的调试会话长期记忆
 export const updateDebugConversationSummary = (app_id: string, summary: string) => {
   return request.post<BaseResponse<unknown>>(`/apps/${app_id}/summary`, { summary })
+}
+
+// 获取指定应用的发布配置信息
+export const getPublishedConfig = (app_id: string) => {
+  return request.get<GetPublishedConfigResponse>(`/apps/${app_id}/published-config`)
+}
+
+// 重新生成 WebApp 访问凭证标识
+export const regenerateWebAppToken = (app_id: string) => {
+  return request.post<RegenerateWebAppTokenResponse>(
+    `/apps/${app_id}/published-config/regenerate-web-app-token`
+  )
 }
