@@ -31,10 +31,15 @@ export const getAudioRecorderFile = (
 }
 
 /** 将录音文件转换成文本。后端要求传入应用 ID 和 WAV/WebM 音频文件。 */
-export const audioToText = (appId: string, file: File): Promise<AudioToTextResponse> => {
+export const audioToText = (
+  appId: string,
+  file: File,
+  webAppToken?: string,
+): Promise<AudioToTextResponse> => {
   const formData = new FormData()
   formData.append('app_id', appId)
   formData.append('file', file)
+  if (webAppToken) formData.append('web_app_token', webAppToken)
 
   return request.post<AudioToTextResponse>('/audio/audio-to-text', formData)
 }

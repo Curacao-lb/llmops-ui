@@ -53,7 +53,11 @@
     loadDebugConversationMessages,
   } = useGetDebugConversationMessagesWithPage()
   const { loading: stopDebugChatLoading, handleStopDebugChat } = useStopDebugChat()
-  const { suggested_questions, handleGenerateSuggestedQuestions } = useGenerateSuggestedQuestions()
+  const {
+    loading: suggested_questions_loading,
+    suggested_questions,
+    handleGenerateSuggestedQuestions,
+  } = useGenerateSuggestedQuestions()
 
   // 是否处于对话生成中
   const debugChatLoading = ref(false)
@@ -165,6 +169,10 @@
 
   // 提交提问
   const handleSubmit = async () => {
+    if (recording.value || audioToTextLoading.value) {
+      Message.warning('请先结束语音输入并等待识别完成')
+      return
+    }
     if (uploadLoading.value) {
       Message.warning('图片仍在上传，请稍后再发送')
       return
@@ -321,6 +329,7 @@
           :answer="item.answer"
           :app="props.app"
           :suggested_questions="item.id === message_id ? suggested_questions : []"
+          :suggested_questions_loading="item.id === message_id && suggested_questions_loading"
           :loading="item.id === message_id && debugChatLoading"
           :latency="item.latency"
           :total_token_count="item.total_token_count"
@@ -376,7 +385,7 @@
         <!-- 清除按钮 -->
         <a-button
           :loading="deleteDebugConversationLoading"
-          :disabled="uploadLoading"
+          :disabled="uploadLoading || recording || audioToTextLoading"
           class="flex-shrink-0 !text-gray-700"
           type="text"
           shape="circle"
@@ -475,7 +484,7 @@
               type="text"
               shape="circle"
               class="!text-blue-700"
-              :disabled="uploadLoading"
+              :disabled="uploadLoading || recording || audioToTextLoading"
               @click="handleSubmit"
             >
               <template #icon>

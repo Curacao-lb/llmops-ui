@@ -3,10 +3,22 @@
   import OpeningAbilityItem from './abilities/OpeningAbilityItem.vue'
   import LongTermMemoryAbilityItem from './abilities/LongTermMemoryAbilityItem.vue'
   import SuggestedAfterAnswerAbilityItem from './abilities/SuggestedAfterAnswerAbilityItem.vue'
+  import ContentReviewAbilityItem from './abilities/ContentReviewAbilityItem.vue'
+  import AudioAbilityItem from './abilities/AudioAbilityItem.vue'
   import WorkflowsAbilityItem from './abilities/WorkflowsAbilityItem.vue'
   import MultimodalAbilityItem from './abilities/MultimodalAbilityItem.vue'
 
   type Workflow = { id: string; name: string; icon: string; description: string }
+  type ReviewConfig = {
+    enable: boolean
+    keywords: string[]
+    inputs_config: { enable: boolean; preset_response: string }
+    outputs_config: { enable: boolean }
+  }
+  type AudioConfig = {
+    speech_to_text: { enable: boolean }
+    text_to_speech: { enable: boolean; voice: string; auto_play: boolean }
+  }
 
   const props = defineProps({
     app_id: { type: String, default: '', required: true },
@@ -33,6 +45,25 @@
   const suggested_after_answer = buildField<{ enable: boolean }>('suggested_after_answer', {
     enable: true,
   })
+  const review_config = buildField<ReviewConfig>('review_config', {
+    enable: false,
+    keywords: [],
+    inputs_config: { enable: false, preset_response: '' },
+    outputs_config: { enable: false },
+  })
+  const audio_config = computed<AudioConfig>({
+    get: () => ({
+      speech_to_text: props.draft_app_config?.speech_to_text ?? { enable: false },
+      text_to_speech: props.draft_app_config?.text_to_speech ?? {
+        enable: false,
+        voice: 'echo',
+        auto_play: false,
+      },
+    }),
+    set: (value) => {
+      emits('update:draft_app_config', { ...props.draft_app_config, ...value })
+    },
+  })
   const multimodal = buildField<{ enable: boolean }>('multimodal', { enable: false })
   const workflows = buildField<Workflow[]>('workflows', [])
 </script>
@@ -58,6 +89,11 @@
           :app_id="props.app_id"
           v-model:suggested_after_answer="suggested_after_answer"
         />
+        <content-review-ability-item
+          :app_id="props.app_id"
+          v-model:review_config="review_config"
+        />
+        <audio-ability-item :app_id="props.app_id" v-model:audio_config="audio_config" />
       </a-collapse>
     </div>
   </div>

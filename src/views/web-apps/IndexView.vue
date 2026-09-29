@@ -3,6 +3,8 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { QueueEvent, title } from '@/config'
+import { useGenerateSuggestedQuestions } from '@/hooks/use-ai'
+import { useAudioToText } from '@/hooks/use-audio'
 import { useAccountStore } from '@/stores/account'
 import { useCredentialStore } from '@/stores/credential'
 import { useLogout } from '@/hooks/use-auth'
@@ -36,6 +38,18 @@ const {
   loadWebAppConversations,
 } = useGetAppConversations()
 const { loading: chatLoading, handleWebAppChat } = useWebAppChat()
+const {
+  loading: audioToTextLoading,
+  recording,
+  startRecording,
+  stopRecording: stopAudioRecording,
+  cancelRecording,
+} = useAudioToText()
+const {
+  loading: suggestedQuestionsLoading,
+  suggested_questions: suggestedQuestions,
+  handleGenerateSuggestedQuestions,
+} = useGenerateSuggestedQuestions()
 const { loading: stopLoading, handleStopWebAppChat } = useStopWebAppChat()
 const {
   messages,
@@ -70,6 +84,7 @@ const selectedConversation = computed(() =>
 )
 const isNewConversation = computed(() => selectedConversationId.value === '')
 const multimodalEnabled = computed(() => Boolean(web_app.value.app_config?.multimodal?.enable))
+const speechToTextEnabled = computed(() => Boolean(web_app.value.app_config?.speech_to_text?.enable))
 const canLoadMore = computed(
   () =>
     !isNewConversation.value &&
@@ -95,7 +110,9 @@ const loadConversations = async () => {
 
 const selectConversation = async (conversationId: string) => {
   if (chatLoading.value) await handleStop()
+  if (recording.value) await cancelRecording()
   composerGeneration += 1
+  suggestedQuestions.value = []
   imageUrls.value = []
   selectedConversationId.value = conversationId
   if (conversationId === '') {
@@ -117,7 +134,9 @@ const submitOpeningQuestion = (question: string) => {
 }
 
 const addConversation = () => {
+  if (recording.value) void cancelRecording()
   composerGeneration += 1
+  suggestedQuestions.value = []
   selectedConversationId.value = ''
   messages.value = []
   query.value = ''
@@ -164,6 +183,14 @@ const handleFileChange = async (event: Event) => {
 }
 
 const handleSubmit = async () => {
+  if (recording.value || audioToTextLoading.value) {
+    Message.warning('请先结束语音输入并等待识别完成')
+    return
+  }
+  if (recording.value) {
+    Message.warning('请先结束录音，再发送问题')
+    return
+  }
   if (uploadLoading.value) {
     Message.warning('图片仍在上传，请稍后再发送')
     return
@@ -183,6 +210,7 @@ const handleSubmit = async () => {
   imageUrls.value = []
   taskId.value = ''
   messageId.value = ''
+  suggestedQuestions.value = []
   const currentMessage = {
     id: '',
     conversation_id: isNewConversation.value ? '' : selectedConversationId.value,
@@ -196,6 +224,7 @@ const handleSubmit = async () => {
   }
   messages.value.unshift(currentMessage)
   let position = 0
+  let answerCompleted = false
   scrollToBottom()
 
   await handleWebAppChat(
@@ -208,6 +237,7 @@ const handleSubmit = async () => {
     (eventResponse) => {
       const event = String(eventResponse.event ?? '')
       const data = (eventResponse.data ?? {}) as Record<string, unknown>
+      if (event === QueueEvent.agentEnd) answerCompleted = true
       if (messageId.value === '' && data.message_id) {
         messageId.value = String(data.message_id)
         taskId.value = String(data.task_id ?? '')
@@ -240,9 +270,43 @@ const handleSubmit = async () => {
     },
   )
 
+  if (
+    web_app.value.app_config?.suggested_after_answer?.enable &&
+    messageId.value &&
+    answerCompleted
+  ) {
+    try {
+      await handleGenerateSuggestedQuestions(messageId.value)
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '建议问题生成失败')
+    }
+  }
+
   if (isNewConversation.value && currentMessage.conversation_id) {
     await loadConversations()
     selectedConversationId.value = currentMessage.conversation_id
+  }
+}
+
+const toggleRecording = async () => {
+  if (recording.value) {
+    try {
+      const text = (await stopAudioRecording(String(web_app.value.id ?? ''), token)).trim()
+      if (text) query.value = [query.value.trim(), text].filter(Boolean).join(' ')
+      else Message.info('没有识别到语音内容')
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '语音识别失败')
+    }
+    return
+  }
+  if (!web_app.value.id) {
+    Message.warning('应用信息尚未加载完成')
+    return
+  }
+  try {
+    await startRecording()
+  } catch (error) {
+    Message.error(error instanceof Error ? error.message : '无法启动录音，请检查麦克风权限')
   }
 }
 
@@ -425,6 +489,9 @@ onMounted(async () => {
                 :enable_token_cost="true"
                 :enable_text_to_speech="Boolean(web_app.app_config?.text_to_speech?.enable)"
                 :auto_play_text_to_speech="Boolean(web_app.app_config?.text_to_speech?.auto_play)"
+                :suggested_questions="item.id === messageId ? suggestedQuestions : []"
+                :suggested_questions_loading="item.id === messageId && suggestedQuestionsLoading"
+                @select-suggested-question="submitOpeningQuestion"
               />
             </div>
           </div>
@@ -499,12 +566,29 @@ onMounted(async () => {
               >
                 <template #icon><icon-plus /></template>
               </a-button>
+              <a-button
+                v-if="speechToTextEnabled"
+                type="text"
+                shape="circle"
+                :loading="audioToTextLoading"
+                :disabled="chatLoading || audioToTextLoading"
+                :title="recording ? '结束录音并识别' : '语音输入'"
+                @click="toggleRecording"
+              >
+                <template #icon>
+                  <icon-voice :style="{ color: recording ? '#dc2626' : undefined }" />
+                </template>
+              </a-button>
             </div>
           </div>
           <a-button v-if="chatLoading" type="outline" :loading="stopLoading" @click="handleStop"
             >停止</a-button
           >
-          <a-button v-else type="primary" :disabled="uploadLoading" @click="handleSubmit"
+          <a-button
+            v-else
+            type="primary"
+            :disabled="uploadLoading || recording || audioToTextLoading"
+            @click="handleSubmit"
             >发送</a-button
           >
         </div>

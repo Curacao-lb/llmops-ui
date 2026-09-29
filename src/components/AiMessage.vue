@@ -40,6 +40,7 @@
       type: Array as PropType<string[]>,
       default: () => [],
     },
+    suggested_questions_loading: { type: Boolean, default: false },
     // 消息气泡的额外样式类，方便在不同背景下使用
     message_class: { type: String, default: 'bg-gray-100' },
     // 是否展示推理步骤
@@ -233,6 +234,9 @@
         >
           {{ suggested_question }}
         </div>
+      </div>
+      <div v-if="props.suggested_questions_loading" class="text-xs text-gray-400">
+        正在生成建议问题...
       </div>
     </div>
   </div>

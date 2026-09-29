@@ -36,7 +36,7 @@ export const useAudioToText = () => {
     return currentRecorder
   }
 
-  const stopRecording = async (appId: string) => {
+  const stopRecording = async (appId: string, webAppToken?: string) => {
     const currentRecorder = await releaseRecorder()
     if (!currentRecorder) return ''
 
@@ -44,7 +44,7 @@ export const useAudioToText = () => {
       const file = getAudioRecorderFile(currentRecorder)
       if (file.size === 0) throw new Error('没有录到音频，请重试')
       loading.value = true
-      const response = await audioToText(appId, file)
+      const response = await audioToText(appId, file, webAppToken)
       return response.data.text
     } finally {
       loading.value = false
