@@ -131,6 +131,7 @@
               :loading="loading && item.id === lastMessageId"
               :enable_agent_thought="false"
               :enable_token_cost="false"
+              :enable_browser_speech="true"
               message_class="bg-white"
             />
           </template>

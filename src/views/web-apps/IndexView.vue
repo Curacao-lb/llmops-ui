@@ -423,6 +423,8 @@ onMounted(async () => {
                 :total_token_count="item.total_token_count"
                 :loading="chatLoading && item.id === messageId"
                 :enable_token_cost="true"
+                :enable_text_to_speech="Boolean(web_app.app_config?.text_to_speech?.enable)"
+                :auto_play_text_to_speech="Boolean(web_app.app_config?.text_to_speech?.auto_play)"
               />
             </div>
           </div>

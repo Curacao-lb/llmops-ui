@@ -14,6 +14,7 @@
   import ChatMessage from '@/components/ChatMessage.vue'
   import AiMessage from '@/components/AiMessage.vue'
   import { uploadImage } from '@/services/upload-file'
+  import { useAudioToText } from '@/hooks/use-audio'
 
   const route = useRoute()
   const props = defineProps({
@@ -31,6 +32,13 @@
   const image_urls = ref<string[]>([])
   const fileInput = ref<HTMLInputElement | null>(null)
   const uploadLoading = ref(false)
+  const {
+    loading: audioToTextLoading,
+    recording,
+    startRecording,
+    stopRecording: stopAudioRecording,
+    cancelRecording,
+  } = useAudioToText()
   const message_id = ref('')
   const message_event = ref('')
   const task_id = ref('')
@@ -50,9 +58,36 @@
   // 是否处于对话生成中
   const debugChatLoading = ref(false)
   const multimodalEnabled = computed(() => Boolean(props.app_config?.multimodal?.enable))
+  const speechToTextEnabled = computed(() => Boolean(props.app_config?.speech_to_text?.enable))
   watch(multimodalEnabled, (enabled) => {
     if (!enabled) image_urls.value = []
   })
+
+  watch(speechToTextEnabled, (enabled) => {
+    if (!enabled && recording.value) void cancelRecording()
+  })
+
+  const toggleRecording = async () => {
+    if (recording.value) {
+      try {
+        const text = (await stopAudioRecording(String(props.app?.id ?? ''))).trim()
+        if (text) query.value = [query.value.trim(), text].filter(Boolean).join(' ')
+        else Message.info('没有识别到语音内容')
+      } catch (error) {
+        Message.error(error instanceof Error ? error.message : '语音识别失败')
+      }
+      return
+    }
+    if (!props.app?.id) {
+      Message.warning('应用信息尚未加载完成')
+      return
+    }
+    try {
+      await startRecording()
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '无法启动录音，请检查麦克风权限')
+    }
+  }
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -258,6 +293,7 @@
     await loadDebugConversationMessages(String(route.params?.app_id), true)
     scrollToBottom()
   })
+
 </script>
 
 <template>
@@ -288,6 +324,8 @@
           :loading="item.id === message_id && debugChatLoading"
           :latency="item.latency"
           :total_token_count="item.total_token_count"
+          :enable_text_to_speech="Boolean(props.app_config?.text_to_speech?.enable)"
+          :auto_play_text_to_speech="Boolean(props.app_config?.text_to_speech?.auto_play)"
           @select-suggested-question="handleSubmitQuestion"
         />
       </div>
@@ -404,6 +442,20 @@
             >
               <template #icon>
                 <icon-plus :size="16" />
+              </template>
+            </a-button>
+            <a-button
+              v-if="speechToTextEnabled"
+              type="text"
+              shape="circle"
+              class="!text-gray-700"
+              :loading="audioToTextLoading"
+              :disabled="debugChatLoading || audioToTextLoading"
+              :title="recording ? '结束录音并识别' : '语音输入'"
+              @click="toggleRecording"
+            >
+              <template #icon>
+                <icon-voice :size="16" :style="{ color: recording ? '#dc2626' : undefined }" />
               </template>
             </a-button>
             <!-- 生成中显示停止，否则显示发送 -->

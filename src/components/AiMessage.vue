@@ -1,11 +1,12 @@
 <script setup lang="ts">
-  import { computed, type PropType } from 'vue'
+  import { computed, watch, type PropType } from 'vue'
   import { Message } from '@arco-design/web-vue'
   import MarkdownIt from 'markdown-it'
   import hljs from 'highlight.js'
   import 'highlight.js/styles/github-dark.css'
   import 'github-markdown-css'
   import AgentThought from '@/components/AgentThought.vue'
+  import { useBrowserSpeech, useMessageToAudio } from '@/hooks/use-audio'
 
   // 运行流程中的单个步骤（对应后端 agent_thoughts 里的一项）
   interface AgentThoughtItem {
@@ -45,6 +46,12 @@
     enable_agent_thought: { type: Boolean, default: true },
     // 是否展示 token 消耗
     enable_token_cost: { type: Boolean, default: true },
+    // 是否允许将当前回答转成语音
+    enable_text_to_speech: { type: Boolean, default: false },
+    // 是否使用浏览器本地语音合成朗读
+    enable_browser_speech: { type: Boolean, default: false },
+    // 回答生成完成后自动播放
+    auto_play_text_to_speech: { type: Boolean, default: false },
   })
 
   const emits = defineEmits(['selectSuggestedQuestion'])
@@ -82,6 +89,43 @@
   })
 
   const renderedAnswer = computed(() => markdown.render(props.answer))
+  const {
+    loading: audioLoading,
+    audioUrl,
+    audioElement,
+    playMessageAudio,
+  } = useMessageToAudio()
+  const { speaking, speakText, cancelSpeech } = useBrowserSpeech()
+
+  const playTextToSpeech = async () => {
+    if (!props.message_id || !props.answer.trim() || props.loading) return
+    try {
+      await playMessageAudio(props.message_id)
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '语音播放失败')
+    }
+  }
+
+  const toggleBrowserSpeech = () => {
+    if (speaking.value) {
+      cancelSpeech()
+      return
+    }
+    try {
+      speakText(props.answer)
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '语音朗读失败')
+    }
+  }
+
+  watch(
+    () => props.loading,
+    (loading, wasLoading) => {
+      if (wasLoading && !loading && props.auto_play_text_to_speech) {
+        void playTextToSpeech()
+      }
+    },
+  )
 
   // 复制回答内容到剪贴板
   const copyText = async () => {
@@ -138,6 +182,35 @@
           <!-- 文本复制 -->
           <div class="flex items-center gap-1 text-gray-500">
             <icon-copy class="cursor-pointer hover:text-gray-700" @click="copyText" />
+          </div>
+          <div v-if="props.enable_text_to_speech && props.message_id" class="text-gray-500">
+            <a-button
+              size="mini"
+              type="text"
+              :loading="audioLoading"
+              :disabled="props.loading"
+              title="播放语音"
+              @click="playTextToSpeech"
+            >
+              <template #icon><icon-sound :size="14" /></template>
+              语音播放
+            </a-button>
+            <audio ref="audioElement" :src="audioUrl" class="hidden" />
+          </div>
+          <div v-if="props.enable_browser_speech" class="text-gray-500">
+            <a-button
+              size="mini"
+              type="text"
+              :disabled="props.loading"
+              :title="speaking ? '停止朗读' : '朗读回答'"
+              @click="toggleBrowserSpeech"
+            >
+              <template #icon>
+                <icon-pause v-if="speaking" :size="14" />
+                <icon-sound v-else :size="14" />
+              </template>
+              {{ speaking ? '停止朗读' : '朗读回答' }}
+            </a-button>
           </div>
           <!-- 响应耗时 -->
           <div class="flex items-center gap-1 text-gray-500">
