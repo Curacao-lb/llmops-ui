@@ -21,6 +21,7 @@
     loading?: boolean
     // AI 消息的运行流程步骤
     agentThoughts?: AgentThoughtItem[]
+    image_urls?: string[]
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +29,7 @@
     loading: false,
     message: '',
     agentThoughts: () => [],
+    image_urls: () => [],
   })
   const isUser = ref(false)
   isUser.value = props.role === 'human'
@@ -57,6 +59,17 @@
       >
         {{ message }}
         <span v-if="loading" class="cursor" aria-label="正在生成" />
+      </div>
+      <div v-if="isUser && image_urls.length > 0" class="flex flex-wrap gap-2">
+        <a-image
+          v-for="image_url in image_urls"
+          :key="image_url"
+          :src="image_url"
+          width="96"
+          height="96"
+          fit="cover"
+          class="rounded-lg overflow-hidden"
+        />
       </div>
       <!-- 运行流程（仅 AI 消息展示） -->
       <agent-thought v-if="!isUser" :thoughts="props.agentThoughts" :running="props.loading" />

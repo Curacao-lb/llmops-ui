@@ -31,6 +31,7 @@ declare module 'vue' {
     AForm: typeof import('@arco-design/web-vue')['Form']
     AFormItem: typeof import('@arco-design/web-vue')['FormItem']
     AgentThought: typeof import('./src/components/AgentThought.vue')['default']
+    AImage: typeof import('@arco-design/web-vue')['Image']
     AiMessage: typeof import('./src/components/AiMessage.vue')['default']
     AInput: typeof import('@arco-design/web-vue')['Input']
     AInputNumber: typeof import('@arco-design/web-vue')['InputNumber']

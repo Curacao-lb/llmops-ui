@@ -1,6 +1,6 @@
 <script setup lang="ts">
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  import { nextTick, onMounted, type PropType, ref } from 'vue'
+  import { computed, nextTick, onMounted, type PropType, ref, watch } from 'vue'
   import { useRoute } from 'vue-router'
   import { Message } from '@arco-design/web-vue'
   import { debugChat } from '@/services/app'
@@ -13,6 +13,7 @@
   import { QueueEvent } from '@/config'
   import ChatMessage from '@/components/ChatMessage.vue'
   import AiMessage from '@/components/AiMessage.vue'
+  import { uploadImage } from '@/services/upload-file'
 
   const route = useRoute()
   const props = defineProps({
@@ -27,6 +28,9 @@
   })
 
   const query = ref('')
+  const image_urls = ref<string[]>([])
+  const fileInput = ref<HTMLInputElement | null>(null)
+  const uploadLoading = ref(false)
   const message_id = ref('')
   const message_event = ref('')
   const task_id = ref('')
@@ -45,6 +49,10 @@
 
   // 是否处于对话生成中
   const debugChatLoading = ref(false)
+  const multimodalEnabled = computed(() => Boolean(props.app_config?.multimodal?.enable))
+  watch(multimodalEnabled, (enabled) => {
+    if (!enabled) image_urls.value = []
+  })
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -81,8 +89,51 @@
     await handleStopDebugChat(props.app?.id, task_id.value)
   }
 
+  const triggerFileInput = () => {
+    if (!multimodalEnabled.value) {
+      Message.warning('请先在应用能力中开启多模态图片输入')
+      return
+    }
+    if (image_urls.value.length >= 5) {
+      Message.warning('一次最多上传 5 张图片')
+      return
+    }
+    fileInput.value?.click()
+  }
+
+  const handleFileChange = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      Message.warning('请选择图片文件')
+      return
+    }
+    if (image_urls.value.length >= 5) {
+      Message.warning('一次最多上传 5 张图片')
+      return
+    }
+
+    try {
+      uploadLoading.value = true
+      const response = await uploadImage(file)
+      if (!multimodalEnabled.value) return
+      image_urls.value.push(response.data.image_url)
+      Message.success('图片上传成功')
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : '图片上传失败')
+    } finally {
+      uploadLoading.value = false
+    }
+  }
+
   // 提交提问
   const handleSubmit = async () => {
+    if (uploadLoading.value) {
+      Message.warning('图片仍在上传，请稍后再发送')
+      return
+    }
     if (query.value.trim() === '') {
       Message.warning('用户提问不能为空')
       return
@@ -104,7 +155,7 @@
       id: '',
       conversation_id: '',
       query: query.value,
-      image_urls: [] as string[],
+      image_urls: [...image_urls.value],
       answer: '',
       total_token_count: 0,
       latency: 0,
@@ -115,12 +166,14 @@
 
     let position = 0
     const humanQuery = query.value
+    const humanImageUrls = [...image_urls.value]
     query.value = ''
+    image_urls.value = []
     debugChatLoading.value = true
     scrollToBottom()
 
     try {
-      await debugChat(props.app?.id, humanQuery, (event_response) => {
+      await debugChat(props.app?.id, humanQuery, humanImageUrls, (event_response) => {
         const event = event_response?.event as string
         const data = event_response?.data as Record<string, any> | undefined
         const event_id = data?.id
@@ -193,6 +246,7 @@
 
   // 清空调试会话
   const handleClear = async () => {
+    image_urls.value = []
     await handleStop()
     await handleDeleteDebugConversation(props.app?.id, async () => {
       await loadDebugConversationMessages(String(route.params?.app_id), true)
@@ -221,7 +275,7 @@
         class="flex flex-col gap-6 py-6"
       >
         <!-- 人类消息 -->
-        <chat-message role="human" :message="item.query" />
+        <chat-message role="human" :message="item.query" :image_urls="item.image_urls" />
         <!-- AI 消息 -->
         <ai-message
           :enable_token_cost="true"
@@ -284,6 +338,7 @@
         <!-- 清除按钮 -->
         <a-button
           :loading="deleteDebugConversationLoading"
+          :disabled="uploadLoading"
           class="flex-shrink-0 !text-gray-700"
           type="text"
           shape="circle"
@@ -296,32 +351,86 @@
         </a-button>
         <!-- 输入框组件 -->
         <div
-          class="h-[50px] flex items-center gap-2 px-4 flex-1 min-w-0 border border-gray-200 rounded-[24px] bg-white focus-within:border-blue-500 transition-colors"
+          :class="[
+            'flex flex-col justify-center gap-2 px-4 flex-1 min-w-0 border border-gray-200 rounded-[24px] bg-white focus-within:border-blue-500 transition-colors',
+            image_urls.length > 0 ? 'min-h-[100px]' : 'h-[50px]',
+          ]"
         >
-          <input
-            v-model="query"
-            type="text"
-            placeholder="输入你的问题..."
-            class="flex-1 min-w-0 outline-0 bg-transparent"
-            @keyup.enter="handleSubmit"
-          />
-          <!-- 生成中显示停止，否则显示发送 -->
-          <a-button
-            v-if="debugChatLoading"
-            type="text"
-            shape="circle"
-            title="停止生成"
-            @click="handleStop"
-          >
-            <template #icon>
-              <icon-record-stop :size="16" :style="{ color: '#dc2626' }" />
-            </template>
-          </a-button>
-          <a-button v-else type="text" shape="circle" class="!text-blue-700" @click="handleSubmit">
-            <template #icon>
-              <icon-send :size="16" />
-            </template>
-          </a-button>
+          <div v-if="image_urls.length > 0" class="flex items-center gap-2 pt-2">
+            <div
+              v-for="(image_url, index) in image_urls"
+              :key="image_url"
+              class="group relative h-10 w-10 overflow-hidden rounded-lg"
+            >
+              <a-image :src="image_url" width="40" height="40" fit="cover" />
+              <button
+                type="button"
+                class="absolute inset-0 hidden items-center justify-center bg-black/50 text-white group-hover:flex"
+                :aria-label="`移除第 ${index + 1} 张图片`"
+                @click="image_urls.splice(index, 1)"
+              >
+                <icon-close />
+              </button>
+            </div>
+          </div>
+          <div class="flex min-w-0 items-center gap-2">
+            <input
+              v-if="multimodalEnabled"
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleFileChange"
+            />
+            <input
+              v-model="query"
+              type="text"
+              placeholder="输入你的问题..."
+              class="flex-1 min-w-0 outline-0 bg-transparent"
+              @keyup.enter="handleSubmit"
+            />
+            <a-button
+              :loading="uploadLoading"
+              type="text"
+              shape="circle"
+              class="!text-gray-700"
+              :title="
+                multimodalEnabled
+                  ? '上传图片（最多 5 张）'
+                  : '请先在应用能力中开启多模态图片输入'
+              "
+              :disabled="debugChatLoading || image_urls.length >= 5"
+              @click="triggerFileInput"
+            >
+              <template #icon>
+                <icon-plus :size="16" />
+              </template>
+            </a-button>
+            <!-- 生成中显示停止，否则显示发送 -->
+            <a-button
+              v-if="debugChatLoading"
+              type="text"
+              shape="circle"
+              title="停止生成"
+              @click="handleStop"
+            >
+              <template #icon>
+                <icon-record-stop :size="16" :style="{ color: '#dc2626' }" />
+              </template>
+            </a-button>
+            <a-button
+              v-else
+              type="text"
+              shape="circle"
+              class="!text-blue-700"
+              :disabled="uploadLoading"
+              @click="handleSubmit"
+            >
+              <template #icon>
+                <icon-send :size="16" />
+              </template>
+            </a-button>
+          </div>
         </div>
       </div>
       <!-- 底部提示信息 -->

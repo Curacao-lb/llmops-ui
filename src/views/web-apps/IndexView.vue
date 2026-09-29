@@ -20,6 +20,7 @@ import {
 import UpdateNameModal from './components/UpdateNameModal.vue'
 import ChatMessage from '@/components/ChatMessage.vue'
 import AiMessage from '@/components/AiMessage.vue'
+import { uploadImage } from '@/services/upload-file'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,11 +51,15 @@ const { loading: pinLoading, handleUpdateConversationIsPinned } = useUpdateConve
 // remaining visible after a conversation is removed.
 const selectedConversationId = ref('')
 const query = ref('')
+const imageUrls = ref<string[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploadLoading = ref(false)
 const taskId = ref('')
 const messageId = ref('')
 const updateNameVisible = ref(false)
 const updateNameConversationId = ref('')
 const scroller = ref<HTMLElement | null>(null)
+let composerGeneration = 0
 
 const conversations = computed(() => [
   ...pinned_conversations.value,
@@ -64,6 +69,7 @@ const selectedConversation = computed(() =>
   conversations.value.find((item) => item.id === selectedConversationId.value),
 )
 const isNewConversation = computed(() => selectedConversationId.value === '')
+const multimodalEnabled = computed(() => Boolean(web_app.value.app_config?.multimodal?.enable))
 const canLoadMore = computed(
   () =>
     !isNewConversation.value &&
@@ -89,6 +95,8 @@ const loadConversations = async () => {
 
 const selectConversation = async (conversationId: string) => {
   if (chatLoading.value) await handleStop()
+  composerGeneration += 1
+  imageUrls.value = []
   selectedConversationId.value = conversationId
   if (conversationId === '') {
     messages.value = []
@@ -109,12 +117,57 @@ const submitOpeningQuestion = (question: string) => {
 }
 
 const addConversation = () => {
+  composerGeneration += 1
   selectedConversationId.value = ''
   messages.value = []
   query.value = ''
+  imageUrls.value = []
+}
+
+const triggerFileInput = () => {
+  if (imageUrls.value.length >= 5) {
+    Message.warning('一次最多上传 5 张图片')
+    return
+  }
+  fileInput.value?.click()
+}
+
+const handleFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    Message.warning('请选择图片文件')
+    return
+  }
+  if (imageUrls.value.length >= 5) {
+    Message.warning('一次最多上传 5 张图片')
+    return
+  }
+
+  const uploadGeneration = composerGeneration
+  try {
+    uploadLoading.value = true
+    const response = await uploadImage(file)
+    if (composerGeneration !== uploadGeneration) {
+      Message.warning('会话已切换，图片未添加')
+      return
+    }
+    imageUrls.value.push(response.data.image_url)
+    Message.success('图片上传成功')
+  } catch (error) {
+    Message.error(error instanceof Error ? error.message : '图片上传失败')
+  } finally {
+    uploadLoading.value = false
+  }
 }
 
 const handleSubmit = async () => {
+  if (uploadLoading.value) {
+    Message.warning('图片仍在上传，请稍后再发送')
+    return
+  }
   if (!query.value.trim()) {
     Message.warning('用户提问不能为空')
     return
@@ -125,14 +178,16 @@ const handleSubmit = async () => {
   }
 
   const humanQuery = query.value.trim()
+  const humanImageUrls = [...imageUrls.value]
   query.value = ''
+  imageUrls.value = []
   taskId.value = ''
   messageId.value = ''
   const currentMessage = {
     id: '',
     conversation_id: isNewConversation.value ? '' : selectedConversationId.value,
     query: humanQuery,
-    image_urls: [],
+    image_urls: humanImageUrls,
     answer: '',
     total_token_count: 0,
     latency: 0,
@@ -148,6 +203,7 @@ const handleSubmit = async () => {
     {
       conversation_id: currentMessage.conversation_id,
       query: humanQuery,
+      image_urls: humanImageUrls,
     },
     (eventResponse) => {
       const event = String(eventResponse.event ?? '')
@@ -357,7 +413,7 @@ onMounted(async () => {
               :key="item.id || item.query"
               class="mb-7"
             >
-              <chat-message role="human" :message="item.query" />
+              <chat-message role="human" :message="item.query" :image_urls="item.image_urls" />
               <ai-message
                 :app="web_app"
                 :answer="item.answer"
@@ -394,16 +450,61 @@ onMounted(async () => {
       </div>
       <div class="shrink-0 bg-white border-t p-4">
         <div class="max-w-3xl mx-auto flex items-end gap-3">
-          <a-textarea
-            v-model="query"
-            :auto-size="{ minRows: 2, maxRows: 6 }"
-            placeholder="请输入你的问题"
-            @keydown.enter.exact.prevent="handleSubmit"
-          />
+          <div
+            class="flex-1 min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-blue-500"
+          >
+            <div v-if="imageUrls.length > 0" class="flex flex-wrap gap-2 pb-2">
+              <div
+                v-for="(imageUrl, index) in imageUrls"
+                :key="imageUrl"
+                class="group relative h-12 w-12 overflow-hidden rounded-lg"
+              >
+                <a-image :src="imageUrl" width="48" height="48" fit="cover" />
+                <button
+                  type="button"
+                  class="absolute inset-0 hidden items-center justify-center bg-black/50 text-white group-hover:flex"
+                  :aria-label="`移除第 ${index + 1} 张图片`"
+                  @click="imageUrls.splice(index, 1)"
+                >
+                  <icon-close />
+                </button>
+              </div>
+            </div>
+            <div class="flex items-end gap-2">
+              <a-textarea
+                v-model="query"
+                :auto-size="{ minRows: 2, maxRows: 6 }"
+                placeholder="请输入你的问题"
+                class="flex-1"
+                @keydown.enter.exact.prevent="handleSubmit"
+              />
+              <input
+                v-if="multimodalEnabled"
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleFileChange"
+              />
+              <a-button
+                v-if="multimodalEnabled"
+                :loading="uploadLoading"
+                type="text"
+                shape="circle"
+                title="上传图片（最多 5 张）"
+                :disabled="chatLoading || imageUrls.length >= 5"
+                @click="triggerFileInput"
+              >
+                <template #icon><icon-plus /></template>
+              </a-button>
+            </div>
+          </div>
           <a-button v-if="chatLoading" type="outline" :loading="stopLoading" @click="handleStop"
             >停止</a-button
           >
-          <a-button v-else type="primary" @click="handleSubmit">发送</a-button>
+          <a-button v-else type="primary" :disabled="uploadLoading" @click="handleSubmit"
+            >发送</a-button
+          >
         </div>
       </div>
     </main>

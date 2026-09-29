@@ -10,6 +10,7 @@ export type GetWebAppResponse = BaseResponse<{
     opening_questions: string[]
     suggested_after_answer: { enable: boolean }
     features: string[]
+    multimodal: { enable: boolean }
     speech_to_text: Record<string, unknown>
     text_to_speech: Record<string, unknown>
   }

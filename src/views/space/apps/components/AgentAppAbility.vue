@@ -4,6 +4,7 @@
   import LongTermMemoryAbilityItem from './abilities/LongTermMemoryAbilityItem.vue'
   import SuggestedAfterAnswerAbilityItem from './abilities/SuggestedAfterAnswerAbilityItem.vue'
   import WorkflowsAbilityItem from './abilities/WorkflowsAbilityItem.vue'
+  import MultimodalAbilityItem from './abilities/MultimodalAbilityItem.vue'
 
   type Workflow = { id: string; name: string; icon: string; description: string }
 
@@ -32,6 +33,7 @@
   const suggested_after_answer = buildField<{ enable: boolean }>('suggested_after_answer', {
     enable: true,
   })
+  const multimodal = buildField<{ enable: boolean }>('multimodal', { enable: false })
   const workflows = buildField<Workflow[]>('workflows', [])
 </script>
 
@@ -42,6 +44,7 @@
       <a-collapse :default-active-key="['opening']" :bordered="false" expand-icon-position="right">
         <!-- 工作流组件 -->
         <workflows-ability-item :app_id="props.app_id" v-model:workflows="workflows" />
+        <multimodal-ability-item :app_id="props.app_id" v-model:multimodal="multimodal" />
         <opening-ability-item
           :app_id="props.app_id"
           v-model:opening_statement="opening_statement"

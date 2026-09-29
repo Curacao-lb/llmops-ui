@@ -5,6 +5,7 @@ export interface AssistantMessage {
   id: string
   query: string
   answer: string
+  image_urls: string[]
 }
 
 // 固定的演示问题：仅允许提问这一个问题（纯前端演示，不调用真实大模型）
@@ -37,7 +38,7 @@ export const useAssistantAgentChat = () => {
   }
 
   // 发送问题并以打字机方式模拟流式回答
-  const handleSend = async (query: string): Promise<void> => {
+  const handleSend = async (query: string, image_urls: string[] = []): Promise<void> => {
     if (loading.value) return
 
     loading.value = true
@@ -45,6 +46,7 @@ export const useAssistantAgentChat = () => {
       id: `${Date.now()}`,
       query,
       answer: '',
+      image_urls,
     }
     messages.value.push(current)
 
